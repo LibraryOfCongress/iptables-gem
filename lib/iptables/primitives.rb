@@ -5,6 +5,7 @@ module IPTables
 		attr_reader :children
 		def initialize(primitives_hash)
 			@children = {}
+			raise "expected Hash" unless primitives_hash.is_a? Hash
 			primitives_hash.each{ |name, info|
 				child = nil
 				case info

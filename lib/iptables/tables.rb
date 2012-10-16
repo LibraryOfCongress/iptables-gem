@@ -19,8 +19,9 @@ module IPTables
 			when Hash
 				input.keys.sort.each{ |table_name|
 					table_info = input[table_name]
-					if table_info == nil
-						@tables[table_name] = nil
+					case table_info
+					when nil, false
+						@tables[table_name] = table_info
 						next
 					end
 					table = Table.new(table_name, self, table_info)
@@ -55,15 +56,15 @@ module IPTables
 
 				case table_object
 				when false
+					$log.debug("deleting table #{table_name}")
 					@tables.delete(table_name)
 					next
+
 				when nil
 					next
-				when IPTables::Table
-					# only a Table is expected from here onwards
-				else
-					raise "don't know how to merge table #{table_name}"
 				end
+
+				# only a Table is expected from here onwards
 
 				# merged table
 				if @tables.has_key? table_name
@@ -138,7 +139,16 @@ module IPTables
 
 			table_info_hash.keys.sort.each{ |chain_name|
 				chain_info = table_info_hash[chain_name]
-				@chains[chain_name] = IPTables::Chain.new(chain_name, chain_info, self)
+				case chain_info
+				when Hash
+					@chains[chain_name] = IPTables::Chain.new(chain_name, chain_info, self)
+
+				when false, nil
+					@chains[chain_name] = chain_info
+
+				else
+					raise "don't know how to handle #{chain_name}: #{chain_info.inspect}"
+				end
 			}
 			$log.debug("table #{@name} is #{self}")
 		end
@@ -177,18 +187,20 @@ module IPTables
 				when false
 					@chains.delete(chain_name)
 					next
+
 				when nil
 					next
-				when IPTables::Chain
-					# only a Chain is expected from here onwards
-				else
-					raise "don't know how to merge chain #{chain_name}"
 				end
+				# only a Chain is expected from here onwards
 
 				# merge Chain
 				if @chains.has_key? chain_name
 					@chains[chain_name].merge(chain_object)
+					next
 				end
+
+				# copy Chain
+				@chains[chain_name] = chain_object
 			}
 		end
 		
@@ -229,8 +241,6 @@ module IPTables
 					return position - 1
 				end
 			end
-
-			return position
 		end
 	end
 
@@ -284,12 +294,6 @@ module IPTables
 
 		def path()
 			@my_table.path + ".#{@name}"
-		end
-
-		def add_rules(chain_object)
-			# if found, *add* rules
-			return if chain_object.additions.nil?
-			$log.debug("additions: #{chain_object.additions}")
 		end
 
 		def register_node_addition_point(rule_object, addition_name)
