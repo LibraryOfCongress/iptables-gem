@@ -1,2 +1,4 @@
 *.swp
 coverage/*
+pkg
+rdoc
