@@ -200,15 +200,18 @@ class TestChain < Test::Unit::TestCase
 end
 
 class TestRule < Test::Unit::TestCase
+	# TODO: code needs restructuring before some of these cases can be covered by tests
 	def setup
-		@test_iptables = IPTables::Tables.new(
-			<<-EOS.dedent
-				*table1
-				:chain1 ACCEPT [0:0]
-				-A chain1 -j ACCEPT
-				COMMIT
-			EOS
-		)
+		@test_iptables = IPTables::Tables.new({
+			'table1' => {
+				'chain1' => {
+					'policy' => 'ACCEPT',
+					'rules' => [
+						'-j ACCEPT'
+					]
+				}
+			}
+		})
 		@chain1 = @test_iptables.tables['table1'].chains['chain1']
 	end
 
@@ -238,5 +241,22 @@ class TestRule < Test::Unit::TestCase
 			IPTables::Rule.new( {'service_name' => 'foo', 'service_tcp' => 1337, 'service_udp' => 1337, 'fake' => 1}, @chain1 ).as_array
 		}
 		#rule1 = test_iptables.tables['table1'].chains['chain1'].rules[0]
+		assert_raise( RuntimeError ) { IPTables::Rule.new( {'bad' => 1}, @chain1 ) }
+	end
+
+	def test_handle_node_addition_points
+		rule = IPTables::Rule.new( {'node_addition_points' => ['chain1']}, @chain1 )
+		assert_equal( [], rule.as_array )
+	end
+
+	def test_as_array
+		assert_equal(
+			["-A chain1 -p tcp -m limit --limit 1/sec --limit-burst 2 -j ULOG --ulog-prefix \"chain1:\""],
+			IPTables::Rule.new( {'ulog' => '-p tcp'}, @chain1 ).as_array
+		)
+	end
+
+	def test_path
+		assert_equal('table1.chain1.0', @chain1.rules[0].path)
 	end
 end
