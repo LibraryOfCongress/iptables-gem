@@ -59,21 +59,58 @@ class TestService < Test::Unit::TestCase
 end
 
 class TestInterpolations < Test::Unit::TestCase
+	def setup
+		@new = IPTables::Interpolations.new({})
+	end
+
 	def test_initialize
-		new = IPTables::Interpolations.new({})
-		assert_equal({}, new.named)
+		assert_equal({}, @new.named)
 	end
 
 	def test_add
-		new = IPTables::Interpolations.new({})
-		new.add('test_interpolation')
-		assert_instance_of(IPTables::Interpolation, new.named['test_interpolation'])
+		@new.add('test_interpolation')
+		assert_instance_of(IPTables::Interpolation, @new.named['test_interpolation'])
 	end
 
 	def test_children
-		new = IPTables::Interpolations.new({})
-		new.add('test_interpolation')
-		assert_equal([{"raw"=>"test_interpolation"}], new.children('test_interpolation'))
-		assert_equal([{"raw"=>"test_interpolation"}], new.children(['test_interpolation']))
+		@new.add('test_interpolation')
+		assert_equal([{"raw"=>"test_interpolation"}], @new.children('test_interpolation'))
+		assert_equal([{"raw"=>"test_interpolation"}], @new.children(['test_interpolation']))
+	end
+end
+
+class TestInterpolation < Test::Unit::TestCase
+	def setup
+		@config = IPTables::Configuration.new
+		@config.primitives( 
+			IPTables::Primitives.new({
+				'branch' => { 'leaf1' => 'leaf1_value' },
+				'leaf2' => 'leaf2_value',
+				'array1' => [ 'array_value1', 'array_value2' ]
+			}) 
+		)
+		@config.interpolations( 
+			IPTables::Interpolations.new( @config.primitives )
+		)
+	end
+
+	def test_add_child
+		assert_raise( RuntimeError ) { IPTables::Interpolation.new(@config.interpolations, '<% missing %>') }
+		#assert_raise( RuntimeError ) { IPTables::Interpolation.new(@config.interpolations, '<% branch %>') }
+	end
+
+	def test_children
+		assert_equal(
+			'junk leaf1_value', 
+			IPTables::Interpolation.new(@config.interpolations, 'junk <% branch.leaf1 %>').children
+		)
+		assert_equal(
+			'leaf2_value stuff', 
+			IPTables::Interpolation.new(@config.interpolations, '<% leaf2 %> stuff').children
+		)
+		assert_equal(
+			["before array_value1 after", "before array_value2 after"], 
+			IPTables::Interpolation.new(@config.interpolations, 'before <% array1 %> after').children
+		)
 	end
 end

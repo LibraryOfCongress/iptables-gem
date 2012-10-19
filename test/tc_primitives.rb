@@ -19,7 +19,8 @@ class TestPrimitives < Test::Unit::TestCase
 			}
 		}
 		primitives = IPTables::Primitives.new(test_data)
-		assert_raise( RuntimeError ) { primitives.substitute('no') }
+		assert_raise( RuntimeError, 'a missing substitution is an error' ) { primitives.substitute('missing') }
+		assert_raise( RuntimeError, 'a partial substitution is an error' ) { primitives.substitute('first') }
 		assert_equal('blah', primitives.substitute('first.second'))
 	end
 end

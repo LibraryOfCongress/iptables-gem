@@ -200,7 +200,7 @@ module IPTables
 				end
 
 				# copy Chain
-				@chains[chain_name] = chain_object
+				@chains[chain_name] = chain_object if chain_object.complete?
 			}
 		end
 		
@@ -319,6 +319,14 @@ module IPTables
 			rule_object = IPTables::Rule.new(args.strip, self)
 			rule_object.set_position(@rules.length)
 			@rules.push(rule_object)
+		end
+
+		def complete?
+			if @rules.nil?
+				return true if @additions.nil?
+				return false
+			end
+			return true if @rules.any?
 		end
 	end
 
