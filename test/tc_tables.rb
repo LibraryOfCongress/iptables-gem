@@ -27,8 +27,6 @@ class TestTables < Test::Unit::TestCase
 		})
 		assert_kind_of(IPTables::Table, test_iptables.tables['table1'])
 		assert_nil(test_iptables.tables['table2'])
-
-		assert_equal({}, IPTables::Tables.new('').tables)
 	end
 
 	def test_as_array
@@ -162,6 +160,7 @@ class TestTables < Test::Unit::TestCase
 
 	def test_parse
 		assert_raise( RuntimeError ) { IPTables::Tables.new('garbage') }
+		assert_raise( RuntimeError, 'should not allow empty iptables parsed rules' ) { IPTables::Tables.new('') }
 	end
 end
 

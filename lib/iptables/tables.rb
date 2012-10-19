@@ -117,6 +117,7 @@ module IPTables
 					raise "unhandled line: #{line}"
 				end
 			end
+			raise 'no tables found' unless @tables.any?
 		end
 	end
 
