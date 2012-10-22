@@ -38,5 +38,14 @@ module IPTables
 				return @children[the_first]
 			end
 		end
+
+		def has_primitive?(identifier)
+			begin
+				self.substitute(identifier)
+				return true
+			rescue
+				return false
+			end
+		end
 	end
 end

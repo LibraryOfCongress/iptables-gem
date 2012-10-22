@@ -1,0 +1,6 @@
+0.2.0: 
+	New Rule parameter: "has_primitive":
+	Do not evaluate or add a rule if it requires a non-existent primitive.
+
+0.1.0: 
+	initial release

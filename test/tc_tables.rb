@@ -373,6 +373,29 @@ class TestRule < Test::Unit::TestCase
 		)
 	end
 
+	def test_handle_requires_primitive
+		assert_equal( 
+			[], 
+			IPTables::Rule.new( 
+				{
+					'raw' => '-j ACCEPT', 
+					'requires_primitive' => 'nonexistent'
+				}, 
+				@chain1 
+			).as_array 
+		)
+		assert_equal( 
+			['-A chain1 -j ACCEPT'], 
+			IPTables::Rule.new( 
+				{
+					'raw' => '-j ACCEPT', 
+					'requires_primitive' => 'leaf2'
+				}, 
+				@chain1 
+			).as_array 
+		)
+	end
+
 	def test_as_array
 		assert_equal(
 			["-A chain1 -p tcp -m limit --limit 1/sec --limit-burst 2 -j ULOG --ulog-prefix \"chain1:\""],

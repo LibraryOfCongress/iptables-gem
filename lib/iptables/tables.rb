@@ -357,6 +357,8 @@ module IPTables
 
 			@args = ''
 
+			self.handle_requires_primitive
+
 			case @rule_hash.length
 			when 1
 				@type = @rule_hash.keys.first
@@ -403,6 +405,18 @@ module IPTables
 
 		def add_child(rule_hash)
 			@children.push(IPTables::Rule.new(rule_hash, @my_chain))
+		end
+
+		def handle_requires_primitive
+			@requires_primitive = nil
+			return unless @rule_hash.has_key? 'requires_primitive'
+			@requires_primitive = @rule_hash['requires_primitive']
+			@rule_hash.delete('requires_primitive')
+			config = @my_chain.my_table.my_iptables.config
+			raise 'missing config' if config.nil?
+			primitives = config.primitives
+			raise 'missing primitives' if primitives.nil?
+			@rule_hash = {'empty' => nil} unless primitives.has_primitive?(@requires_primitive)
 		end
 		
 		def handle_custom_service()
