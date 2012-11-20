@@ -39,6 +39,17 @@ class TestTables < Test::Unit::TestCase
 		assert_equal(['*table1', 'COMMIT'], test_iptables.as_array)
 	end
 
+	def test_merge_table_to_null_table_should_overwrite_null_table
+		test_iptables1 = IPTables::Tables.new( {
+			'table1' => nil,
+		})
+		test_iptables2 = IPTables::Tables.new( {
+			'table1' => {},
+		})
+		test_iptables1.merge(test_iptables2)
+		assert_kind_of(IPTables::Table, test_iptables1.tables['table1'], 'after merge, table1 should be a Table')
+	end
+
 	def test_merge
 		test_iptables1 = IPTables::Tables.new(
 			<<-EOS.dedent

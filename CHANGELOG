@@ -1,3 +1,6 @@
+0.2.1:
+	Properly handle merging on top of a policy with a nil table.
+
 0.2.0: 
 	New Rule parameter: "has_primitive":
 	Do not evaluate or add a rule if it requires a non-existent primitive.

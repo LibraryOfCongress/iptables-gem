@@ -67,7 +67,7 @@ module IPTables
 				# only a Table is expected from here onwards
 
 				# merged table
-				if @tables.has_key? table_name
+				if (@tables.has_key? table_name) and not (@tables[table_name].nil?)
 					@tables[table_name].merge(table_object)
 					next
 				end
