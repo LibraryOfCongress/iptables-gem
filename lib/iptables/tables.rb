@@ -39,13 +39,13 @@ module IPTables
 		def as_array()
 			array = []
 			$log.debug('IPTables array')
-			@tables.keys.sort().each{ |name|
+			@tables.keys.sort.each{ |name|
+				array << '*'+name
 				table = @tables[name]
 				$log.debug("#{name}: #{table}")
-				next if table == nil
-				array += table.as_array
+				array += table.as_array unless table.nil?
+				array << 'COMMIT'
 			}
-			array.push "COMMIT"
 			return array
 		end
 
@@ -173,7 +173,7 @@ module IPTables
 				policies.push ":#{name} #{chain.output_policy}"
 				chains += chain.as_array
 			}
-			return ["*#{@name}"] + policies + chains
+			return policies + chains
 		end
 
 		def path()

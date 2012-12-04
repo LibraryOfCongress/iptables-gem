@@ -29,25 +29,99 @@ class TestTables < Test::Unit::TestCase
 		assert_nil(test_iptables.tables['table2'])
 	end
 
-	def test_as_array
+	def test_empty_parsed_table_as_array
 		test_iptables = IPTables::Tables.new(
 			<<-EOS.dedent
-				*table1
+				*nat
 				COMMIT
 			EOS
 		)
-		assert_equal(['*table1', 'COMMIT'], test_iptables.as_array)
+		assert_equal(
+			['*nat', 'COMMIT'], 
+			test_iptables.as_array,
+			'empty parsed table should produce no policy and empty ruleset'
+		)
 	end
 
-	def test_merge_table_to_null_table_should_overwrite_null_table
+	def test_null_table_as_array
+		test_iptables1 = IPTables::Tables.new( {
+			'nat' => nil,
+		})
+		assert_equal(
+			[ "*nat", "COMMIT" ], 
+			test_iptables1.as_array,
+			'null table should produce no policy and empty ruleset'
+		)
+	end
+
+	def test_two_tables_as_array
+		test_iptables1 = IPTables::Tables.new( {
+			'nat' => {
+				'INPUT' => {
+					'policy' => 'ACCEPT'
+				}
+			},
+			'filter' => {
+				'INPUT' => {
+					'policy' => 'ACCEPT'
+				}
+			},
+		})
+		assert_equal(
+			[
+				"*filter",
+				":INPUT ACCEPT",
+				"COMMIT",
+				"*nat",
+				":INPUT ACCEPT",
+				"COMMIT"
+			], 
+			test_iptables1.as_array,
+			'two tables should produce consistent array output'
+		)
+	end
+
+	def test_table_only_with_policy_as_array
+		test_iptables1 = IPTables::Tables.new( {
+			'nat' => {
+				'INPUT' => {
+					'policy' => 'ACCEPT'
+				}
+			},
+		})
+		assert_equal(
+			[
+				"*nat",
+				":INPUT ACCEPT",
+				"COMMIT"
+			], 
+			test_iptables1.as_array,
+			'null table to array should produce an empty array'
+		)
+	end
+
+	def test_merge_table_to_null_table
 		test_iptables1 = IPTables::Tables.new( {
 			'table1' => nil,
 		})
 		test_iptables2 = IPTables::Tables.new( {
-			'table1' => {},
+			'table1' => {
+				'INPUT' => {
+					'policy' => 'ACCEPT'
+				}
+			},
 		})
 		test_iptables1.merge(test_iptables2)
 		assert_kind_of(IPTables::Table, test_iptables1.tables['table1'], 'after merge, table1 should be a Table')
+		assert_equal(
+			[
+				"*table1",
+				":INPUT ACCEPT",
+				"COMMIT"
+			], 
+			test_iptables1.as_array,
+			'after merge, table1 should include a complete ruleset'
+		)
 	end
 
 	def test_merge
