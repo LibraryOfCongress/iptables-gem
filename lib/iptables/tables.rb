@@ -421,11 +421,29 @@ module IPTables
 		
 		def handle_custom_service()
 			raise "missing service name: #{@rule_hash.inspect}" unless @rule_hash.has_key? 'service_name'
-			self.add_child({'comment' => "_ #{@rule_hash['service_name']}"})
+
+			custom_service_port = nil
+			custom_services = []
 			@rule_hash.keys.sort.each{ |key|
 				next if key == 'service_name'
 				raise "unknown service key: #{key}" unless @@valid_custom_service_keys.include? key
-				self.add_child({key => @rule_hash[key]})
+				custom_services << {key => @rule_hash[key]}
+				# set the custom service port if exactly one custom service has a port
+				# or both services have the same port
+				if custom_service_port.nil?
+					custom_service_port = @rule_hash[key]
+				else
+					custom_service_port = nil unless @rule_hash[key].to_i == custom_service_port.to_i
+				end
+			}
+
+			if custom_service_port.nil?
+				self.add_child({'comment' => "_ #{@rule_hash['service_name']}"})
+			else
+				self.add_child({'comment' => "_ Port #{custom_service_port} - #{@rule_hash['service_name']}"})
+			end
+			custom_services.each{ |service_hash|
+				self.add_child(service_hash)
 			}
 		end
 
