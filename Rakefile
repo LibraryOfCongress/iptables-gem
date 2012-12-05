@@ -18,10 +18,11 @@ end
 #   http://rubygems.org/read/chapter/20
 #
 spec = Gem::Specification.new do |s|
+	raise 'where is the CHANGELOG?' unless f = File.open('CHANGELOG')
 
   # Change these as appropriate
   s.name              = "iptables"
-  s.version           = "0.2.1"
+  s.version           = f.readlines.first.chomp
   s.summary           = "Generate and read iptables rules with Ruby"
   s.author            = "Kurt Yoder"
 	# don't have these yet:
