@@ -54,6 +54,64 @@ class TestTables < Test::Unit::TestCase
 		)
 	end
 
+	def test_as_array_without_comments
+		config = IPTables::Configuration.new()
+		tables = IPTables::Tables.new({
+			'filter' => {
+				'INPUT' => {
+					'policy' => 'ACCEPT',
+					'rules' => [
+						{ 'comment' => 'foobar' }
+					]
+				}
+			}
+		}, config)
+		assert_equal(
+			[
+				"*filter",
+				":INPUT ACCEPT",
+				"COMMIT"
+			], 
+			tables.as_array(comments = false),
+			'if comments are excluded, they should not appear in output'
+		)
+	end
+
+	def test_compare_ignoring_comments
+		config = IPTables::Configuration.new()
+		tables1 = IPTables::Tables.new({
+			'filter' => {
+				'INPUT' => {
+					'policy' => 'ACCEPT',
+					'rules' => [
+						{ 'comment' => 'foobar' }
+					]
+				}
+			}
+		}, config)
+		tables2 = IPTables::Tables.new({
+			'filter' => {
+				'INPUT' => {
+					'policy' => 'ACCEPT',
+					'rules' => [
+						{ 'comment' => 'foobaz' }
+					]
+				}
+			}
+		}, config)
+		comparison = tables1.compare(tables2, include_comments = false)
+		assert_equal(
+			[], 
+			comparison['only_in_self'],
+			'when comparing two tables that only differ in comments, and ignoring comments, only_in_self should be empty'
+		)
+		assert_equal(
+			[], 
+			comparison['only_in_compared'],
+			'when comparing two tables that only differ in comments, and ignoring comments, only_in_compared should be empty'
+		)
+	end
+
 	def test_two_tables_as_array
 		test_iptables1 = IPTables::Tables.new( {
 			'nat' => {

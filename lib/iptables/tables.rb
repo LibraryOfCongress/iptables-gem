@@ -36,14 +36,14 @@ module IPTables
 			end
 		end
 
-		def as_array()
+		def as_array(comments = true)
 			array = []
 			$log.debug('IPTables array')
 			@tables.keys.sort.each{ |name|
 				array << '*'+name
 				table = @tables[name]
 				$log.debug("#{name}: #{table}")
-				array += table.as_array unless table.nil?
+				array += table.as_array(comments) unless table.nil?
 				array << 'COMMIT'
 			}
 			return array
@@ -84,10 +84,10 @@ module IPTables
 			}
 		end
 
-		def compare(compared)
+		def compare(compared, include_comments = true)
 			raise "must compare another IPTables::Tables" unless compared.class == IPTables::Tables
-			self_array = self.as_array
-			compared_array = compared.as_array
+			self_array = self.as_array(comments = include_comments)
+			compared_array = compared.as_array(comments = include_comments)
 			only_in_self = self_array - compared_array
 			only_in_compared = compared_array - self_array
 			return {'only_in_self' => only_in_self, 'only_in_compared' => only_in_compared}
@@ -154,7 +154,7 @@ module IPTables
 			$log.debug("table #{@name} is #{self}")
 		end
 
-		def as_array()
+		def as_array(comments = true)
 			policies = []
 			chains = []
 
@@ -171,7 +171,7 @@ module IPTables
 				$log.debug("chain #{name}")
 				chain = @chains[name]
 				policies.push ":#{name} #{chain.output_policy}"
-				chains += chain.as_array
+				chains += chain.as_array(comments)
 			}
 			return policies + chains
 		end
@@ -277,10 +277,10 @@ module IPTables
 			return (@policy == nil) ? '-' : @policy
 		end
 		
-		def as_array()
+		def as_array(comments = true)
 			$log.debug("Chain #{@name} array")
 			return [] if @rules == nil
-			rules = @rules.collect{ |rule| rule.as_array}.flatten
+			rules = @rules.collect{ |rule| rule.as_array(comments)}.flatten
 			$log.debug(rules)
 			return rules
 		end
@@ -484,9 +484,10 @@ module IPTables
 			}
 		end
 
-		def as_array()
+		def as_array(comments = true)
 			case @type
 			when 'comment'
+				return [] unless comments
 				self.generate_comment()
 
 			when 'empty'
