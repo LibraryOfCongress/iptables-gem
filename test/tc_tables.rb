@@ -124,6 +124,60 @@ class TestTables < Test::Unit::TestCase
 		)
 	end
 
+	def test_custom_service_additions
+		config = IPTables::Configuration.new()
+		policy_table = IPTables::Tables.new({
+			'filter' => {
+				'INPUT' => {
+					'policy' => 'ACCEPT',
+					'rules' => [
+						{
+							'node_addition_points' => [ 'INPUT' ]
+						},
+					]
+				}
+			}
+		}, config)
+		rules_table = IPTables::Tables.new({
+			'filter' => {
+				'INPUT' => {
+					'additions' => [
+						{
+							'service_name' => 'svc1',
+							'service_tcp' => 2222
+						},
+						{
+							'service_name' => 'svc2',
+							'service_udp' => 2223
+						},
+						{
+							'service_name' => 'svc3',
+							'service_tcp' => 2224,
+							'service_udp' => 2225
+						}
+					]
+				}
+			}
+		}, config)
+		policy_table.merge(rules_table)
+		assert_equal(
+			[
+				"*filter",
+				":INPUT ACCEPT",
+				'-A INPUT -m comment --comment "_ Port 2222 - svc1"',
+				'-A INPUT -p tcp -m tcp --sport 1024:65535 --dport 2222 -m state --state NEW,ESTABLISHED -j ACCEPT',
+				'-A INPUT -m comment --comment "_ Port 2223 - svc2"',
+				'-A INPUT -p udp -m udp --sport 1024:65535 --dport 2223 -m state --state NEW,ESTABLISHED -j ACCEPT',
+				'-A INPUT -m comment --comment "_ svc3"',
+				'-A INPUT -p tcp -m tcp --sport 1024:65535 --dport 2224 -m state --state NEW,ESTABLISHED -j ACCEPT',
+				'-A INPUT -p udp -m udp --sport 1024:65535 --dport 2225 -m state --state NEW,ESTABLISHED -j ACCEPT',
+				"COMMIT"
+			], 
+			policy_table.as_array,
+			'adding custom services on a node_addition_point should produce known results'
+		)
+	end
+
 	def test_merge
 		test_iptables1 = IPTables::Tables.new(
 			<<-EOS.dedent
@@ -409,14 +463,14 @@ class TestRule < Test::Unit::TestCase
 		)
 		assert_equal(
 			[
-				"-A chain1 -m comment --comment \"_ foo\"",
+				"-A chain1 -m comment --comment \"_ Port 1337 - foo\"",
 			 	"-A chain1 -p tcp -m tcp --sport 1024:65535 --dport 1337 -m state --state NEW,ESTABLISHED -j ACCEPT"
 			],
 			IPTables::Rule.new( {'service_name' => 'foo', 'service_tcp' => 1337}, @chain1 ).as_array
 		)
 		assert_equal(
 			[
-				"-A chain1 -m comment --comment \"_ foo\"",
+				"-A chain1 -m comment --comment \"_ Port 1337 - foo\"",
 			 	"-A chain1 -p tcp -m tcp --sport 1024:65535 --dport 1337 -m state --state NEW,ESTABLISHED -j ACCEPT",
 				"-A chain1 -p udp -m udp --sport 1024:65535 --dport 1337 -m state --state NEW,ESTABLISHED -j ACCEPT"
 			],
