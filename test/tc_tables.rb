@@ -77,6 +77,75 @@ class TestTables < Test::Unit::TestCase
 		)
 	end
 
+	def test_ignore_comments_in_policy_fw
+		config = IPTables::Configuration.new
+		config.primitives( 
+			IPTables::Primitives.new({
+				'branch' => { 'leaf1' => 'leaf1_value' },
+				'leaf2' => 'leaf2_value',
+			}) 
+		)
+		config.interpolations( 
+			IPTables::Interpolations.new( config.primitives )
+		)
+		config.services( 
+			IPTables::Services.new({
+				'service1' => 1111,
+			}) 
+		)
+		config.macros( 
+			IPTables::Macros.new({
+				'macro1' => [
+					{ 'comment' => 'A comment in a macro' }
+				]
+			}) 
+		)
+		config.policy(
+			IPTables::Tables.new({
+				'filter' => {
+					'INPUT' => {
+						'policy' => 'ACCEPT',
+						'rules' => [
+							{ 'comment' => 'foobar' },
+							'-j ACCEPT',
+							{ 'node_addition_points' => [ 'INPUT' ] },
+							{ 'macro' => 'macro1' },
+							{ 'service' => 'service1' },
+						]
+					}
+				}
+			}, config)
+		)
+		config.rules(
+			IPTables::Tables.new({
+				'filter' => {
+					'INPUT' => {
+						'additions' => [
+							{ 'comment' => 'a comment from an addition' },
+							{ 
+								'service_name' => 'a test service',
+								'service_tcp' => 2222
+							},
+						]
+					}
+				}
+			}, config)
+		)
+		converged_fw = config.converge_firewall
+		assert_equal(
+			[
+				'*filter',
+				':INPUT ACCEPT',
+				'-A INPUT -j ACCEPT',
+				'-A INPUT -p tcp -m tcp --sport 1024:65535 --dport 2222 -m state --state NEW,ESTABLISHED -j ACCEPT',
+				'-A INPUT -p tcp -m tcp --sport 1024:65535 --dport 1111 -m state --state NEW,ESTABLISHED -j ACCEPT',
+				'COMMIT'
+			],
+			converged_fw.as_array(false),
+			'when excluding comments from a converged firewall, should see no comments'
+		)
+	end
+
 	def test_compare_ignoring_comments
 		config = IPTables::Configuration.new()
 		tables1 = IPTables::Tables.new({
@@ -84,21 +153,23 @@ class TestTables < Test::Unit::TestCase
 				'INPUT' => {
 					'policy' => 'ACCEPT',
 					'rules' => [
-						{ 'comment' => 'foobar' }
+						{ 'raw' => '-j ACCEPT' },
+						{ 'comment' => 'foobar' },
+						{ 'raw' => '-j DROP' }
 					]
 				}
 			}
 		}, config)
-		tables2 = IPTables::Tables.new({
-			'filter' => {
-				'INPUT' => {
-					'policy' => 'ACCEPT',
-					'rules' => [
-						{ 'comment' => 'foobaz' }
-					]
-				}
-			}
-		}, config)
+		tables2 = IPTables::Tables.new(
+			<<-EOS.dedent
+				*filter
+				:INPUT ACCEPT [0:0]
+				-A INPUT -j ACCEPT
+				-A INPUT -m comment --comment "foobaz"
+				-A INPUT -j DROP
+				COMMIT
+			EOS
+		)
 		comparison = tables1.compare(tables2, include_comments = false)
 		assert_equal(
 			[], 

@@ -525,7 +525,7 @@ module IPTables
 				raise "@args is empty" unless @args.length > 0
 				return ["-A #{@my_chain.name} #{@args}"]
 			else
-				rules = @children.collect{ |child| child.as_array}.flatten
+				rules = @children.collect{ |child| child.as_array(comments)}.flatten
 				$log.debug(rules)
 				return rules
 			end
