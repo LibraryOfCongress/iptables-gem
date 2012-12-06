@@ -437,6 +437,7 @@ class TestChain < Test::Unit::TestCase
 			<<-EOS.dedent
 				*table1
 				:chain1 ACCEPT [0:0]
+				-A chain1 -m comment --comment "BEGIN: in-bound traffic"
 				-A chain1 -j ACCEPT
 				COMMIT
 			EOS
@@ -449,7 +450,27 @@ class TestChain < Test::Unit::TestCase
 	end
 
 	def test_as_array
-		assert_equal(["-A chain1 -j ACCEPT"], @chain1.as_array)
+		assert_equal(
+			[
+				'-A chain1 -m comment --comment "BEGIN: in-bound traffic"',
+				'-A chain1 -j ACCEPT'
+			], 
+			@chain1.as_array,
+			'chain as array should produce known output'
+		)
+	end
+
+	def test_as_array_without_comments
+		assert_equal(
+			@chain1.rules[0].type,
+			'comment',
+			'a chain rule that is known to be a comment should have type comment'
+		)
+		assert_equal(
+			[ '-A chain1 -j ACCEPT' ], 
+			@chain1.as_array(comments = false),
+			'chain as array without comments should produce known output'
+		)
 	end
 
 	def test_path
@@ -537,8 +558,40 @@ class TestRule < Test::Unit::TestCase
 		assert_raise( RuntimeError ) { 
 			IPTables::Rule.new( {'service_name' => 'foo', 'service_tcp' => 1337, 'service_udp' => 1337, 'fake' => 1}, @chain1 ).as_array
 		}
-		#rule1 = test_iptables.tables['table1'].chains['chain1'].rules[0]
 		assert_raise( RuntimeError ) { IPTables::Rule.new( {'bad' => 1}, @chain1 ) }
+	end
+
+	def test_handle_comment
+		rule = IPTables::Rule.new( {'comment' => 'a comment'}, @chain1 )
+		assert_equal( 
+			{'comment' => 'a comment'}, 
+			rule.rule_hash,
+			'comment attributes should be handled as comments'
+		)
+		assert_equal( 
+			rule.type,
+			'comment',
+			'comment attributes should have their type set as "comment"'
+		)
+	end
+
+	def test_parse_comment
+		rule = IPTables::Rule.new( '-m comment --comment "BEGIN: in-bound traffic"', @chain1 )
+		assert_equal( 
+			{'comment' => 'BEGIN: in-bound traffic'}, 
+			rule.rule_hash,
+			'parsed comments should have their rule_hash set properly'
+		)
+		assert_equal( 
+			rule.type,
+			'comment',
+			'parsed comments should have their type set as "comment"'
+		)
+		assert_equal( 
+			[], 
+			rule.as_array(comments = false),
+			'parsed comments should not display when displayed with comments turned off'
+		)
 	end
 
 	def test_handle_node_addition_points
