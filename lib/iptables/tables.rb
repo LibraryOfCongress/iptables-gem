@@ -334,14 +334,17 @@ module IPTables
 	class Rule
 		# possible key names for custom named tcp and/or udp services
 		@@valid_custom_service_keys = %w/service_name service_udp service_tcp/
-		attr_reader :position, :rule_hash
+		attr_reader :position, :rule_hash, :type
+
+		@@parse_comment_regex = /^\-m\s+comment\s+\-\-comment\s+"([^"]+)"/
 
 		def initialize(rule_info, my_chain)
+			$log.debug("received Rule info #{rule_info.inspect}")
 
 			@rule_info = rule_info
 			case rule_info
 			when String
-				@rule_hash = {'raw' => rule_info}
+				self.handle_string(rule_info)
 			when Hash
 				@rule_hash = rule_info
 			else
@@ -484,6 +487,18 @@ module IPTables
 			}
 		end
 
+		def handle_string(rule_info)
+			# try to parse strings
+
+			if rule_info =~ @@parse_comment_regex
+				# if we're a comment, set as comment
+				@rule_hash = {'comment' => $1}
+			else
+				# otherwise set as raw
+				@rule_hash = {'raw' => rule_info}
+			end
+		end
+
 		def as_array(comments = true)
 			case @type
 			when 'comment'
@@ -510,7 +525,7 @@ module IPTables
 				raise "@args is empty" unless @args.length > 0
 				return ["-A #{@my_chain.name} #{@args}"]
 			else
-				rules = @children.collect{ |child| child.as_array}.flatten
+				rules = @children.collect{ |child| child.as_array(comments)}.flatten
 				$log.debug(rules)
 				return rules
 			end

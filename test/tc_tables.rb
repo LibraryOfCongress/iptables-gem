@@ -77,6 +77,75 @@ class TestTables < Test::Unit::TestCase
 		)
 	end
 
+	def test_ignore_comments_in_policy_fw
+		config = IPTables::Configuration.new
+		config.primitives( 
+			IPTables::Primitives.new({
+				'branch' => { 'leaf1' => 'leaf1_value' },
+				'leaf2' => 'leaf2_value',
+			}) 
+		)
+		config.interpolations( 
+			IPTables::Interpolations.new( config.primitives )
+		)
+		config.services( 
+			IPTables::Services.new({
+				'service1' => 1111,
+			}) 
+		)
+		config.macros( 
+			IPTables::Macros.new({
+				'macro1' => [
+					{ 'comment' => 'A comment in a macro' }
+				]
+			}) 
+		)
+		config.policy(
+			IPTables::Tables.new({
+				'filter' => {
+					'INPUT' => {
+						'policy' => 'ACCEPT',
+						'rules' => [
+							{ 'comment' => 'foobar' },
+							'-j ACCEPT',
+							{ 'node_addition_points' => [ 'INPUT' ] },
+							{ 'macro' => 'macro1' },
+							{ 'service' => 'service1' },
+						]
+					}
+				}
+			}, config)
+		)
+		config.rules(
+			IPTables::Tables.new({
+				'filter' => {
+					'INPUT' => {
+						'additions' => [
+							{ 'comment' => 'a comment from an addition' },
+							{ 
+								'service_name' => 'a test service',
+								'service_tcp' => 2222
+							},
+						]
+					}
+				}
+			}, config)
+		)
+		converged_fw = config.converge_firewall
+		assert_equal(
+			[
+				'*filter',
+				':INPUT ACCEPT',
+				'-A INPUT -j ACCEPT',
+				'-A INPUT -p tcp -m tcp --sport 1024:65535 --dport 2222 -m state --state NEW,ESTABLISHED -j ACCEPT',
+				'-A INPUT -p tcp -m tcp --sport 1024:65535 --dport 1111 -m state --state NEW,ESTABLISHED -j ACCEPT',
+				'COMMIT'
+			],
+			converged_fw.as_array(false),
+			'when excluding comments from a converged firewall, should see no comments'
+		)
+	end
+
 	def test_compare_ignoring_comments
 		config = IPTables::Configuration.new()
 		tables1 = IPTables::Tables.new({
@@ -84,21 +153,23 @@ class TestTables < Test::Unit::TestCase
 				'INPUT' => {
 					'policy' => 'ACCEPT',
 					'rules' => [
-						{ 'comment' => 'foobar' }
+						{ 'raw' => '-j ACCEPT' },
+						{ 'comment' => 'foobar' },
+						{ 'raw' => '-j DROP' }
 					]
 				}
 			}
 		}, config)
-		tables2 = IPTables::Tables.new({
-			'filter' => {
-				'INPUT' => {
-					'policy' => 'ACCEPT',
-					'rules' => [
-						{ 'comment' => 'foobaz' }
-					]
-				}
-			}
-		}, config)
+		tables2 = IPTables::Tables.new(
+			<<-EOS.dedent
+				*filter
+				:INPUT ACCEPT [0:0]
+				-A INPUT -j ACCEPT
+				-A INPUT -m comment --comment "foobaz"
+				-A INPUT -j DROP
+				COMMIT
+			EOS
+		)
 		comparison = tables1.compare(tables2, include_comments = false)
 		assert_equal(
 			[], 
@@ -437,6 +508,7 @@ class TestChain < Test::Unit::TestCase
 			<<-EOS.dedent
 				*table1
 				:chain1 ACCEPT [0:0]
+				-A chain1 -m comment --comment "BEGIN: in-bound traffic"
 				-A chain1 -j ACCEPT
 				COMMIT
 			EOS
@@ -449,7 +521,27 @@ class TestChain < Test::Unit::TestCase
 	end
 
 	def test_as_array
-		assert_equal(["-A chain1 -j ACCEPT"], @chain1.as_array)
+		assert_equal(
+			[
+				'-A chain1 -m comment --comment "BEGIN: in-bound traffic"',
+				'-A chain1 -j ACCEPT'
+			], 
+			@chain1.as_array,
+			'chain as array should produce known output'
+		)
+	end
+
+	def test_as_array_without_comments
+		assert_equal(
+			@chain1.rules[0].type,
+			'comment',
+			'a chain rule that is known to be a comment should have type comment'
+		)
+		assert_equal(
+			[ '-A chain1 -j ACCEPT' ], 
+			@chain1.as_array(comments = false),
+			'chain as array without comments should produce known output'
+		)
 	end
 
 	def test_path
@@ -537,8 +629,40 @@ class TestRule < Test::Unit::TestCase
 		assert_raise( RuntimeError ) { 
 			IPTables::Rule.new( {'service_name' => 'foo', 'service_tcp' => 1337, 'service_udp' => 1337, 'fake' => 1}, @chain1 ).as_array
 		}
-		#rule1 = test_iptables.tables['table1'].chains['chain1'].rules[0]
 		assert_raise( RuntimeError ) { IPTables::Rule.new( {'bad' => 1}, @chain1 ) }
+	end
+
+	def test_handle_comment
+		rule = IPTables::Rule.new( {'comment' => 'a comment'}, @chain1 )
+		assert_equal( 
+			{'comment' => 'a comment'}, 
+			rule.rule_hash,
+			'comment attributes should be handled as comments'
+		)
+		assert_equal( 
+			rule.type,
+			'comment',
+			'comment attributes should have their type set as "comment"'
+		)
+	end
+
+	def test_parse_comment
+		rule = IPTables::Rule.new( '-m comment --comment "BEGIN: in-bound traffic"', @chain1 )
+		assert_equal( 
+			{'comment' => 'BEGIN: in-bound traffic'}, 
+			rule.rule_hash,
+			'parsed comments should have their rule_hash set properly'
+		)
+		assert_equal( 
+			rule.type,
+			'comment',
+			'parsed comments should have their type set as "comment"'
+		)
+		assert_equal( 
+			[], 
+			rule.as_array(comments = false),
+			'parsed comments should not display when displayed with comments turned off'
+		)
 	end
 
 	def test_handle_node_addition_points
