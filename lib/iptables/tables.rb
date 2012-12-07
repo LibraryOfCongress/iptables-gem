@@ -40,10 +40,11 @@ module IPTables
 			array = []
 			$log.debug('IPTables array')
 			@tables.keys.sort.each{ |name|
-				array << '*'+name
 				table = @tables[name]
 				$log.debug("#{name}: #{table}")
-				array += table.as_array(comments) unless table.nil?
+				next if table.nil?
+				array << '*'+name
+				array += table.as_array(comments)
 				array << 'COMMIT'
 			}
 			return array

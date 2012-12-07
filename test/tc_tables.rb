@@ -29,26 +29,12 @@ class TestTables < Test::Unit::TestCase
 		assert_nil(test_iptables.tables['table2'])
 	end
 
-	def test_empty_parsed_table_as_array
-		test_iptables = IPTables::Tables.new(
-			<<-EOS.dedent
-				*nat
-				COMMIT
-			EOS
-		)
-		assert_equal(
-			['*nat', 'COMMIT'], 
-			test_iptables.as_array,
-			'empty parsed table should produce no policy and empty ruleset'
-		)
-	end
-
 	def test_null_table_as_array
 		test_iptables1 = IPTables::Tables.new( {
 			'nat' => nil,
 		})
 		assert_equal(
-			[ "*nat", "COMMIT" ], 
+			[], 
 			test_iptables1.as_array,
 			'null table should produce no policy and empty ruleset'
 		)
