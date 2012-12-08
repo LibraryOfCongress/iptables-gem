@@ -389,22 +389,53 @@ class TestTables < Test::Unit::TestCase
 	def test_compare
 		test_iptables1 = IPTables::Tables.new(
 			<<-EOS.dedent
+				*table2
+				:INPUT DROP [0:0]
+				COMMIT
 				*table1
+				:INPUT DROP [0:0]
+				COMMIT
+				*table3
+				:INPUT DROP [0:0]
 				COMMIT
 			EOS
 		)
 		test_iptables2 = IPTables::Tables.new(
 			<<-EOS.dedent
+				*table4
+				:INPUT DROP [0:0]
+				COMMIT
+				*table3
+				:INPUT DROP [0:0]
+				-A INPUT -J ACCEPT
+				COMMIT
 				*table2
+				:INPUT DROP [0:0]
 				COMMIT
 			EOS
 		)
 
 		assert_raise( RuntimeError ) { test_iptables1.compare(nil) }
 
+		$log.level = Logger::DEBUG
+		comparison = test_iptables1.compare(test_iptables2)
+		$log.level = Logger::WARN
 		assert_equal(
-			test_iptables1.compare(test_iptables2), 
-			{"only_in_self"=>["*table1"], "only_in_compared"=>["*table2"]}
+			{
+				"only_in_self"=>[
+					'*table1',
+					':INPUT DROP',
+					'COMMIT'
+				], 
+				"only_in_compared"=>[
+					'-A INPUT -J ACCEPT',
+					'*table4',
+					':INPUT DROP',
+					'COMMIT'
+				]
+			},
+			comparison,
+			'comparison should show all missing rules from first table, and extra rules in second table'
 		)
 	end
 
