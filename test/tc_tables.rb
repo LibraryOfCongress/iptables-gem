@@ -604,7 +604,7 @@ class TestChainCompare < Test::Unit::TestCase
 		@table1_chain = test_iptables1.tables['table1'].chains['chain1']
 	end
 
-	def test_compare
+	def test_same_chain
 		test_iptables2 = IPTables::Tables.new(
 			<<-EOS.dedent
 				*table1
@@ -624,6 +624,122 @@ class TestChainCompare < Test::Unit::TestCase
 			{"missing_rules" => {}, "new_rules" => {}, "new_policy" => false},
 			@table1_chain.compare(table2_chain),
 			'When compared, chains with same rules should return no differences.'
+		)
+	end
+
+	def test_missing_rules
+		test_iptables2 = IPTables::Tables.new(
+			<<-EOS.dedent
+				*table1
+				:chain1 ACCEPT [0:0]
+				-A chain1 -m comment --comment "comment1"
+				-A chain1 -p tcp -m tcp --dport 1 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 5 -j ACCEPT
+				COMMIT
+			EOS
+		)
+		table2_chain = test_iptables2.tables['table1'].chains['chain1']
+
+		assert_equal(
+			{
+				"missing_rules" => {
+					2=>"-A chain1 -p tcp -m tcp --dport 2 -j ACCEPT",
+					3=>"-A chain1 -p tcp -m tcp --dport 3 -j ACCEPT",
+					4=>"-A chain1 -p tcp -m tcp --dport 4 -j ACCEPT"
+				}, 
+				"new_rules" => {}, 
+				"new_policy" => false
+			},
+			@table1_chain.compare(table2_chain),
+			'When compared, chains with missing rules should show difference.'
+		)
+	end
+
+	def test_additional_rules
+		test_iptables2 = IPTables::Tables.new(
+			<<-EOS.dedent
+				*table1
+				:chain1 ACCEPT [0:0]
+				-A chain1 -m comment --comment "comment1"
+				-A chain1 -p tcp -m tcp --dport 1 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 2 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 3 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 31 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 32 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 4 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 5 -j ACCEPT
+				COMMIT
+			EOS
+		)
+		table2_chain = test_iptables2.tables['table1'].chains['chain1']
+
+		assert_equal(
+			{
+				"missing_rules" => {}, 
+				"new_rules" => {
+					4=>"-A chain1 -p tcp -m tcp --dport 31 -j ACCEPT",
+					5=>"-A chain1 -p tcp -m tcp --dport 32 -j ACCEPT"
+				}, 
+				"new_policy" => false
+			},
+			@table1_chain.compare(table2_chain),
+			'When compared, chains with additional rules should show difference.'
+		)
+	end
+
+	def test_new_policy
+		test_iptables2 = IPTables::Tables.new(
+			<<-EOS.dedent
+				*table1
+				:chain1 REJECT [0:0]
+				-A chain1 -m comment --comment "comment1"
+				-A chain1 -p tcp -m tcp --dport 1 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 2 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 3 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 4 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 5 -j ACCEPT
+				COMMIT
+			EOS
+		)
+		table2_chain = test_iptables2.tables['table1'].chains['chain1']
+
+		assert_equal(
+			{"missing_rules" => {}, "new_rules" => {}, "new_policy" => true},
+			@table1_chain.compare(table2_chain),
+			'When compared, chains with new policy should show difference.'
+		)
+	end
+
+	def test_all_changes
+		test_iptables2 = IPTables::Tables.new(
+			<<-EOS.dedent
+				*table1
+				:chain1 DROP [0:0]
+				-A chain1 -m comment --comment "comment1"
+				-A chain1 -p tcp -m tcp --dport 1 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 3 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 31 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 32 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 4 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 5 -j ACCEPT
+				COMMIT
+			EOS
+		)
+		table2_chain = test_iptables2.tables['table1'].chains['chain1']
+
+		assert_equal(
+			{
+				"missing_rules" => {
+					2=>"-A chain1 -p tcp -m tcp --dport 2 -j ACCEPT"
+				}, 
+				"new_rules" => {
+					3=>"-A chain1 -p tcp -m tcp --dport 31 -j ACCEPT",
+					4=>"-A chain1 -p tcp -m tcp --dport 32 -j ACCEPT"
+				}, 
+				"new_policy" => true
+			},
+			@table1_chain.compare(table2_chain),
+			'When compared, chains with changed rules and policy should show difference.'
 		)
 	end
 end

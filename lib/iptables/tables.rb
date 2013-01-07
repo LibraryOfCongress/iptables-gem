@@ -348,9 +348,9 @@ module IPTables
 			Diff::LCS.diff(self.as_array, compared_chain.as_array).each{ |diffgroup|
 				diffgroup.each{ |diff|
 					if diff.action == '-'
-						diffs['only_in_self'][diff.position] = diff.element
+						diffs['missing_rules'][diff.position] = diff.element
 					else
-						diffs['only_in_compared'][diff.position] = diff.element
+						diffs['new_rules'][diff.position] = diff.element
 					end
 				}
 			}
