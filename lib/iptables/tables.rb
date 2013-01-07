@@ -87,11 +87,18 @@ module IPTables
 
 		def compare(compared, include_comments = true)
 			raise "must compare another IPTables::Tables" unless compared.class == IPTables::Tables
-			self_array = self.as_array(comments = include_comments)
-			compared_array = compared.as_array(comments = include_comments)
-			only_in_self = self_array - compared_array
-			only_in_compared = compared_array - self_array
-			return {'only_in_self' => only_in_self, 'only_in_compared' => only_in_compared}
+			self_tables = @tables.keys.sort
+			compared_tables = compared.tables.keys.sort
+			only_in_self = self_tables - compared_tables
+			only_in_self_output = only_in_self.collect{ |table_name| 'table: '+table_name }
+			only_in_compared = compared_tables - self_tables
+			only_in_compared_output = only_in_compared.collect{ |table_name| 'table: '+table_name }
+			# common tables:
+			(self_tables + compared_tables - only_in_self - only_in_compared).each{ |table_name|
+				$log.debug table_name
+				#difference = @tables[table_name].compare(compared.tables[table_name, include_comments)
+			}
+			return {'only_in_self' => only_in_self_output, 'only_in_compared' => only_in_compared_output}
 		end
 
 		def get_node_additions(table_name, chain_name)
@@ -329,6 +336,25 @@ module IPTables
 				return false
 			end
 			return true if @rules.any?
+		end
+
+		def compare(compared_chain, include_comments = true)
+			diffs = {
+				"missing_rules" => {},
+				"new_rules" => {},
+				"new_policy" => (@policy != compared_chain.policy)
+			}
+			require 'diff/lcs'
+			Diff::LCS.diff(self.as_array, compared_chain.as_array).each{ |diffgroup|
+				diffgroup.each{ |diff|
+					if diff.action == '-'
+						diffs['only_in_self'][diff.position] = diff.element
+					else
+						diffs['only_in_compared'][diff.position] = diff.element
+					end
+				}
+			}
+			return diffs
 		end
 	end
 

@@ -386,58 +386,58 @@ class TestTables < Test::Unit::TestCase
 		)
 	end
 
-	def test_compare
-		test_iptables1 = IPTables::Tables.new(
-			<<-EOS.dedent
-				*table2
-				:INPUT DROP [0:0]
-				COMMIT
-				*table1
-				:INPUT DROP [0:0]
-				COMMIT
-				*table3
-				:INPUT DROP [0:0]
-				COMMIT
-			EOS
-		)
-		test_iptables2 = IPTables::Tables.new(
-			<<-EOS.dedent
-				*table4
-				:INPUT DROP [0:0]
-				COMMIT
-				*table3
-				:INPUT DROP [0:0]
-				-A INPUT -J ACCEPT
-				COMMIT
-				*table2
-				:INPUT DROP [0:0]
-				COMMIT
-			EOS
-		)
-
-		assert_raise( RuntimeError ) { test_iptables1.compare(nil) }
-
-		$log.level = Logger::DEBUG
-		comparison = test_iptables1.compare(test_iptables2)
-		$log.level = Logger::WARN
-		assert_equal(
-			{
-				"only_in_self"=>[
-					'*table1',
-					':INPUT DROP',
-					'COMMIT'
-				], 
-				"only_in_compared"=>[
-					'-A INPUT -J ACCEPT',
-					'*table4',
-					':INPUT DROP',
-					'COMMIT'
-				]
-			},
-			comparison,
-			'comparison should show all missing rules from first table, and extra rules in second table'
-		)
-	end
+#	def test_compare
+#		test_iptables1 = IPTables::Tables.new(
+#			<<-EOS.dedent
+#				*table2
+#				:INPUT DROP [0:0]
+#				COMMIT
+#				*table1
+#				:INPUT DROP [0:0]
+#				COMMIT
+#				*table3
+#				:INPUT DROP [0:0]
+#				COMMIT
+#			EOS
+#		)
+#		test_iptables2 = IPTables::Tables.new(
+#			<<-EOS.dedent
+#				*table4
+#				:INPUT DROP [0:0]
+#				COMMIT
+#				*table3
+#				:INPUT DROP [0:0]
+#				-A INPUT -J ACCEPT
+#				COMMIT
+#				*table2
+#				:INPUT DROP [0:0]
+#				COMMIT
+#			EOS
+#		)
+#
+#		assert_raise( RuntimeError ) { test_iptables1.compare(nil) }
+#
+#		$log.level = Logger::DEBUG
+#		comparison = test_iptables1.compare(test_iptables2)
+#		$log.level = Logger::WARN
+#		assert_equal(
+#			{
+#				"only_in_self"=>[
+#					'*table1',
+#					':INPUT DROP',
+#					'COMMIT'
+#				], 
+#				"only_in_compared"=>[
+#					'-A INPUT -J ACCEPT',
+#					'*table4',
+#					':INPUT DROP',
+#					'COMMIT'
+#				]
+#			},
+#			comparison,
+#			'comparison should show all missing rules from first table, and extra rules in second table'
+#		)
+#	end
 
 	def test_get_node_additions
 		# not testing this directly here?
@@ -465,7 +465,7 @@ class TestTable < Test::Unit::TestCase
 		assert_kind_of(IPTables::Chain, table1.chains['INPUT'])
 		assert_equal('table1', table1.name)
 
-		assert_raise( RuntimeError ) {  
+		assert_raise( RuntimeError ) {
 			IPTables::Tables.new({
 				'table1' => {
 					'INPUT' => 1
@@ -582,6 +582,48 @@ class TestChain < Test::Unit::TestCase
 			false,
 			IPTables::Chain.new( 'test_chain', { 'additions' => [] }, @test_iptables).complete?,
 			'chain with only additions should not say it is complete'
+		)
+	end
+end
+
+class TestChainCompare < Test::Unit::TestCase
+	def setup
+		test_iptables1 = IPTables::Tables.new(
+			<<-EOS.dedent
+				*table1
+				:chain1 ACCEPT [0:0]
+				-A chain1 -m comment --comment "comment1"
+				-A chain1 -p tcp -m tcp --dport 1 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 2 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 3 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 4 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 5 -j ACCEPT
+				COMMIT
+			EOS
+		)
+		@table1_chain = test_iptables1.tables['table1'].chains['chain1']
+	end
+
+	def test_compare
+		test_iptables2 = IPTables::Tables.new(
+			<<-EOS.dedent
+				*table1
+				:chain1 ACCEPT [0:0]
+				-A chain1 -m comment --comment "comment1"
+				-A chain1 -p tcp -m tcp --dport 1 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 2 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 3 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 4 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 5 -j ACCEPT
+				COMMIT
+			EOS
+		)
+		table2_chain = test_iptables2.tables['table1'].chains['chain1']
+
+		assert_equal(
+			{"missing_rules" => {}, "new_rules" => {}, "new_policy" => false},
+			@table1_chain.compare(table2_chain),
+			'When compared, chains with same rules should return no differences.'
 		)
 	end
 end
