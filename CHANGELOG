@@ -1,9 +1,12 @@
-0.2.1:
-	Properly handle merging on top of a policy with a nil table.
+0.2.2
+- Generate multi-table output correctly.
 
-0.2.0: 
-	New Rule parameter: "has_primitive":
-	Do not evaluate or add a rule if it requires a non-existent primitive.
+0.2.1
+- Properly handle merging on top of a policy with a nil table.
 
-0.1.0: 
-	initial release
+0.2.0
+- New Rule parameter: "has_primitive":
+- Do not evaluate or add a rule if it requires a non-existent primitive.
+
+0.1.0
+- initial release
