@@ -406,6 +406,11 @@ module IPTables
 			self.compare
 			return @new_rules
 		end
+
+		def new_policy?
+			self.compare
+			return @new_policy
+		end
 	end
 
 	class Rule
