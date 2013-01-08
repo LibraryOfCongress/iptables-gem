@@ -253,6 +253,59 @@ module IPTables
 		end
 	end
 
+	class TableComparison
+		def initialize(table1, table2)
+			raise "must provide two tables" unless (table1.class == IPTables::Table) and (table2.class == IPTables::Table)
+			@table1 = table1
+			@table2 = table2
+
+			@including_comments = true
+			@compared = false
+		end
+
+		def compare
+			return if @compared
+			@equal = true
+
+			table1_chains = @table1.chains.keys.sort
+			table2_chains = @table2.chains.keys.sort
+			@only_in_current = table1_chains - table2_chains
+			@only_in_new = table2_chains - table1_chains
+			@equal = false if @only_in_current.any? or @only_in_new.any?
+
+			@chain_diffs = []
+			(table1_chains - @only_in_current - @only_in_new).each{ |chain|
+				chain_comparison = IPTables::ChainComparison.new(@table1.chains[chain], @table2.chains[chain])
+				if @including_comments
+					chain_comparison.include_comments
+				else
+					chain_comparison.ignore_comments
+				end
+				next if chain_comparison.equal?
+
+				@equal = false
+				@chain_diffs << chain_comparison
+			}
+
+			return nil
+		end
+
+		def ignore_comments
+			@including_comments = false
+			@compared = false
+		end
+
+		def include_comments
+			@including_comments = true
+			@compared = false
+		end
+
+		def equal?
+			self.compare
+			return @equal
+		end
+	end
+
 	class Chain
 		# example chain names in filter table: INPUT, FORWARD, OUTPUT
 		attr_reader :additions, :name, :node_addition_points, :my_table, :policy, :rules
