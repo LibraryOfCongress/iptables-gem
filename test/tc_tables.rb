@@ -519,6 +519,46 @@ class TestTable < Test::Unit::TestCase
 	end
 end
 
+#class TestTableCompare < Test::Unit::TestCase
+#	def setup
+#		test_iptables1 = IPTables::Tables.new(
+#			<<-EOS.dedent
+#				*table1
+#				:chain1 ACCEPT [0:0]
+#				-A chain1 -m comment --comment "comment1"
+#				-A chain1 -p tcp -m tcp --dport 1 -j ACCEPT
+#				:chain2 ACCEPT [0:0]
+#				-A chain2 -m comment --comment "comment2"
+#				-A chain2 -p tcp -m tcp --dport 2 -j ACCEPT
+#				COMMIT
+#			EOS
+#		)
+#		@table1 = test_iptables1.tables['table1']
+#	end
+#
+#	def test_same_table
+#		test_iptables2 = IPTables::Tables.new(
+#			<<-EOS.dedent
+#				*table1
+#				:chain1 ACCEPT [0:0]
+#				-A chain1 -m comment --comment "comment1"
+#				-A chain1 -p tcp -m tcp --dport 1 -j ACCEPT
+#				:chain2 ACCEPT [0:0]
+#				-A chain2 -m comment --comment "comment2"
+#				-A chain2 -p tcp -m tcp --dport 2 -j ACCEPT
+#				COMMIT
+#			EOS
+#		)
+#		table2 = test_iptables2.tables['table1']
+#
+#		assert_equal(
+#			{"missing_rules" => {}, "new_rules" => {}, "new_policy" => false},
+#			@table1_chain.compare(table2_chain),
+#			'When compared, chains with same rules should return no differences.'
+#		)
+#	end
+#end
+
 class TestChain < Test::Unit::TestCase
 	def setup
 		@test_iptables = IPTables::Tables.new(
@@ -586,7 +626,7 @@ class TestChain < Test::Unit::TestCase
 	end
 end
 
-class TestChainCompare < Test::Unit::TestCase
+class TestChainComparison < Test::Unit::TestCase
 	def setup
 		test_iptables1 = IPTables::Tables.new(
 			<<-EOS.dedent
@@ -595,16 +635,22 @@ class TestChainCompare < Test::Unit::TestCase
 				-A chain1 -m comment --comment "comment1"
 				-A chain1 -p tcp -m tcp --dport 1 -j ACCEPT
 				-A chain1 -p tcp -m tcp --dport 2 -j ACCEPT
-				-A chain1 -p tcp -m tcp --dport 3 -j ACCEPT
-				-A chain1 -p tcp -m tcp --dport 4 -j ACCEPT
-				-A chain1 -p tcp -m tcp --dport 5 -j ACCEPT
 				COMMIT
 			EOS
 		)
 		@table1_chain = test_iptables1.tables['table1'].chains['chain1']
 	end
 
-	def test_same_chain
+	def test_invalid
+		assert_raise( RuntimeError, 'should require valid IPTables::Chain object as first parameter' ) { 
+			IPTables::ChainComparison.new(nil, @table1_chain)
+		}
+		assert_raise( RuntimeError, 'should require valid IPTables::Chain object as second parameter' ) { 
+			IPTables::ChainComparison.new(@table1_chain, nil)
+		}
+	end
+
+	def test_equal
 		test_iptables2 = IPTables::Tables.new(
 			<<-EOS.dedent
 				*table1
@@ -612,18 +658,55 @@ class TestChainCompare < Test::Unit::TestCase
 				-A chain1 -m comment --comment "comment1"
 				-A chain1 -p tcp -m tcp --dport 1 -j ACCEPT
 				-A chain1 -p tcp -m tcp --dport 2 -j ACCEPT
-				-A chain1 -p tcp -m tcp --dport 3 -j ACCEPT
-				-A chain1 -p tcp -m tcp --dport 4 -j ACCEPT
-				-A chain1 -p tcp -m tcp --dport 5 -j ACCEPT
 				COMMIT
 			EOS
 		)
 		table2_chain = test_iptables2.tables['table1'].chains['chain1']
+		comparison = IPTables::ChainComparison.new(@table1_chain, table2_chain)
 
 		assert_equal(
-			{"missing_rules" => {}, "new_rules" => {}, "new_policy" => false},
-			@table1_chain.compare(table2_chain),
-			'When compared, chains with same rules should return no differences.'
+			true,
+			comparison.equal?,
+			'Chains with same rules and policies should evaluate as equal.'
+		)
+	end
+
+	def test_unequal_comments
+		test_iptables2 = IPTables::Tables.new(
+			<<-EOS.dedent
+				*table1
+				:chain1 ACCEPT [0:0]
+				-A chain1 -m comment --comment "differing comment1"
+				-A chain1 -p tcp -m tcp --dport 1 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 2 -j ACCEPT
+				COMMIT
+			EOS
+		)
+		table2_chain = test_iptables2.tables['table1'].chains['chain1']
+		comparison = IPTables::ChainComparison.new(@table1_chain, table2_chain)
+
+		comparison.ignore_comments
+		assert_equal(
+			true,
+			comparison.equal?,
+			'When ignoring comments, chains with same rules/policies but differing comments should evaluate as equal.'
+		)
+
+		comparison.include_comments
+		assert_equal(
+			false,
+			comparison.equal?,
+			'When including comments, chains with same rules/policies but differing comments should evaluate as unequal.'
+		)
+		assert_equal(
+			{0=>'-A chain1 -m comment --comment "comment1"'},
+			comparison.missing,
+			'When including comments, chains with same rules/policies but differing comments should have one missing rule.'
+		)
+		assert_equal(
+			{0=>'-A chain1 -m comment --comment "differing comment1"'},
+			comparison.new,
+			'When including comments, chains with same rules/policies but differing comments should have one new rule.'
 		)
 	end
 

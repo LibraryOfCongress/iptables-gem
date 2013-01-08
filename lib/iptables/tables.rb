@@ -337,24 +337,74 @@ module IPTables
 			end
 			return true if @rules.any?
 		end
+	end
 
-		def compare(compared_chain, include_comments = true)
-			diffs = {
-				"missing_rules" => {},
-				"new_rules" => {},
-				"new_policy" => (@policy != compared_chain.policy)
-			}
-			require 'diff/lcs'
-			Diff::LCS.diff(self.as_array, compared_chain.as_array).each{ |diffgroup|
+	class ChainComparison
+		require 'diff/lcs'
+
+		def initialize(chain1, chain2)
+			raise "must provide two chains" unless (chain1.class == IPTables::Chain) and (chain2.class == IPTables::Chain)
+			@chain1 = chain1
+			@chain2 = chain2
+
+			@including_comments = true
+			@compared = false
+		end
+
+		def ignore_comments
+			@including_comments = false
+			@compared = false
+		end
+
+		def include_comments
+			@including_comments = true
+			@compared = false
+		end
+
+		def compare
+			return if @compared
+
+			@equal = true
+
+			@missing_rules = {}
+			@new_rules = {}
+			Diff::LCS.diff(
+				@chain1.as_array(@including_comments), 
+				@chain2.as_array(@including_comments)
+			).each{ |diffgroup|
 				diffgroup.each{ |diff|
 					if diff.action == '-'
-						diffs['missing_rules'][diff.position] = diff.element
+						@missing_rules[diff.position] = diff.element
 					else
-						diffs['new_rules'][diff.position] = diff.element
+						@new_rules[diff.position] = diff.element
 					end
+					@equal = false
 				}
 			}
-			return diffs
+
+			@new_policy = false
+			unless @chain1.policy == @chain2.policy
+				@new_policy = true
+				@equal = false
+			end
+
+			@compared = true
+			return nil
+		end
+
+		def equal?
+			self.compare
+			return @equal
+		end
+
+		def missing
+			self.compare
+			return @missing_rules
+		end
+
+		def new
+			self.compare
+			return @new_rules
 		end
 	end
 
