@@ -85,22 +85,6 @@ module IPTables
 			}
 		end
 
-		def compare(compared, include_comments = true)
-			raise "must compare another IPTables::Tables" unless compared.class == IPTables::Tables
-			self_tables = @tables.keys.sort
-			compared_tables = compared.tables.keys.sort
-			only_in_self = self_tables - compared_tables
-			only_in_self_output = only_in_self.collect{ |table_name| 'table: '+table_name }
-			only_in_compared = compared_tables - self_tables
-			only_in_compared_output = only_in_compared.collect{ |table_name| 'table: '+table_name }
-			# common tables:
-			(self_tables + compared_tables - only_in_self - only_in_compared).each{ |table_name|
-				$log.debug table_name
-				#difference = @tables[table_name].compare(compared.tables[table_name, include_comments)
-			}
-			return {'only_in_self' => only_in_self_output, 'only_in_compared' => only_in_compared_output}
-		end
-
 		def get_node_additions(table_name, chain_name)
 			$log.debug("finding additions for table #{table_name}, chain #{chain_name}")
 			return unless @tables.has_key? table_name
