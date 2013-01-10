@@ -414,7 +414,7 @@ end
 
 class TestTablesComparison < Test::Unit::TestCase
 	def setup
-		@iptables1 = IPTables::Tables.new(
+		@iptables_text = 
 			<<-EOS.dedent
 				*table1
 				:chain1 ACCEPT [0:0]
@@ -437,7 +437,7 @@ class TestTablesComparison < Test::Unit::TestCase
 				-A chain4 -p tcp -m tcp --dport 8 -j ACCEPT
 				COMMIT
 			EOS
-		)
+		@iptables1 = IPTables::Tables.new( @iptables_text )
 	end
 
 	def test_invalid
@@ -450,30 +450,7 @@ class TestTablesComparison < Test::Unit::TestCase
 	end
 
 	def test_equal
-		iptables2 = IPTables::Tables.new(
-			<<-EOS.dedent
-				*table1
-				:chain1 ACCEPT [0:0]
-				-A chain1 -m comment --comment "comment1"
-				-A chain1 -p tcp -m tcp --dport 1 -j ACCEPT
-				-A chain1 -p tcp -m tcp --dport 2 -j ACCEPT
-				:chain2 ACCEPT [0:0]
-				-A chain2 -m comment --comment "comment2"
-				-A chain2 -p tcp -m tcp --dport 3 -j ACCEPT
-				-A chain2 -p tcp -m tcp --dport 4 -j ACCEPT
-				COMMIT
-				*table2
-				:chain3 ACCEPT [0:0]
-				-A chain3 -m comment --comment "comment3"
-				-A chain3 -p tcp -m tcp --dport 5 -j ACCEPT
-				-A chain3 -p tcp -m tcp --dport 6 -j ACCEPT
-				:chain4 ACCEPT [0:0]
-				-A chain4 -m comment --comment "comment4"
-				-A chain4 -p tcp -m tcp --dport 7 -j ACCEPT
-				-A chain4 -p tcp -m tcp --dport 8 -j ACCEPT
-				COMMIT
-			EOS
-		)
+		iptables2 = IPTables::Tables.new( @iptables_text )
 		comparison = IPTables::TablesComparison.new(@iptables1, iptables2)
 
 		assert_equal(
@@ -700,7 +677,7 @@ end
 
 class TestTableComparison < Test::Unit::TestCase
 	def setup
-		test_iptables1 = IPTables::Tables.new(
+		@test_iptables = 
 			<<-EOS.dedent
 				*table1
 				:chain1 ACCEPT [0:0]
@@ -713,8 +690,7 @@ class TestTableComparison < Test::Unit::TestCase
 				-A chain2 -p tcp -m tcp --dport 4 -j ACCEPT
 				COMMIT
 			EOS
-		)
-		@table1 = test_iptables1.tables['table1']
+		@table1 = IPTables::Tables.new( @test_iptables ).tables['table1']
 	end
 
 	def test_invalid
@@ -727,20 +703,7 @@ class TestTableComparison < Test::Unit::TestCase
 	end
 
 	def test_equal
-		test_iptables2 = IPTables::Tables.new(
-			<<-EOS.dedent
-				*table1
-				:chain1 ACCEPT [0:0]
-				-A chain1 -m comment --comment "comment1"
-				-A chain1 -p tcp -m tcp --dport 1 -j ACCEPT
-				-A chain1 -p tcp -m tcp --dport 2 -j ACCEPT
-				:chain2 ACCEPT [0:0]
-				-A chain2 -m comment --comment "comment2"
-				-A chain2 -p tcp -m tcp --dport 3 -j ACCEPT
-				-A chain2 -p tcp -m tcp --dport 4 -j ACCEPT
-				COMMIT
-			EOS
-		)
+		test_iptables2 = IPTables::Tables.new( @test_iptables )
 		table2 = test_iptables2.tables['table1']
 		comparison = IPTables::TableComparison.new(@table1, table2)
 
@@ -929,7 +892,7 @@ end
 
 class TestChainComparison < Test::Unit::TestCase
 	def setup
-		test_iptables1 = IPTables::Tables.new(
+		@iptables_text = 
 			<<-EOS.dedent
 				*table1
 				:chain1 ACCEPT [0:0]
@@ -938,8 +901,7 @@ class TestChainComparison < Test::Unit::TestCase
 				-A chain1 -p tcp -m tcp --dport 2 -j ACCEPT
 				COMMIT
 			EOS
-		)
-		@table1_chain = test_iptables1.tables['table1'].chains['chain1']
+		@table1_chain = IPTables::Tables.new(@iptables_text).tables['table1'].chains['chain1']
 	end
 
 	def test_invalid
@@ -952,16 +914,7 @@ class TestChainComparison < Test::Unit::TestCase
 	end
 
 	def test_equal
-		test_iptables2 = IPTables::Tables.new(
-			<<-EOS.dedent
-				*table1
-				:chain1 ACCEPT [0:0]
-				-A chain1 -m comment --comment "comment1"
-				-A chain1 -p tcp -m tcp --dport 1 -j ACCEPT
-				-A chain1 -p tcp -m tcp --dport 2 -j ACCEPT
-				COMMIT
-			EOS
-		)
+		test_iptables2 = IPTables::Tables.new(@iptables_text)
 		table2_chain = test_iptables2.tables['table1'].chains['chain1']
 		comparison = IPTables::ChainComparison.new(@table1_chain, table2_chain)
 
