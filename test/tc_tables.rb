@@ -449,6 +449,222 @@ class TestTables < Test::Unit::TestCase
 	end
 end
 
+class TestTablesComparison < Test::Unit::TestCase
+	def setup
+		@iptables1 = IPTables::Tables.new(
+			<<-EOS.dedent
+				*table1
+				:chain1 ACCEPT [0:0]
+				-A chain1 -m comment --comment "comment1"
+				-A chain1 -p tcp -m tcp --dport 1 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 2 -j ACCEPT
+				:chain2 ACCEPT [0:0]
+				-A chain2 -m comment --comment "comment2"
+				-A chain2 -p tcp -m tcp --dport 3 -j ACCEPT
+				-A chain2 -p tcp -m tcp --dport 4 -j ACCEPT
+				COMMIT
+				*table2
+				:chain3 ACCEPT [0:0]
+				-A chain3 -m comment --comment "comment3"
+				-A chain3 -p tcp -m tcp --dport 5 -j ACCEPT
+				-A chain3 -p tcp -m tcp --dport 6 -j ACCEPT
+				:chain4 ACCEPT [0:0]
+				-A chain4 -m comment --comment "comment4"
+				-A chain4 -p tcp -m tcp --dport 7 -j ACCEPT
+				-A chain4 -p tcp -m tcp --dport 8 -j ACCEPT
+				COMMIT
+			EOS
+		)
+	end
+
+	def test_invalid
+		assert_raise( RuntimeError, 'should require valid IPTables::Tables object as first parameter' ) { 
+			IPTables::TablesComparison.new(nil, @iptables1)
+		}
+		assert_raise( RuntimeError, 'should require valid IPTables::Tables object as second parameter' ) { 
+			IPTables::TablesComparison.new(@iptables1, nil)
+		}
+	end
+
+	def test_equal
+		iptables2 = IPTables::Tables.new(
+			<<-EOS.dedent
+				*table1
+				:chain1 ACCEPT [0:0]
+				-A chain1 -m comment --comment "comment1"
+				-A chain1 -p tcp -m tcp --dport 1 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 2 -j ACCEPT
+				:chain2 ACCEPT [0:0]
+				-A chain2 -m comment --comment "comment2"
+				-A chain2 -p tcp -m tcp --dport 3 -j ACCEPT
+				-A chain2 -p tcp -m tcp --dport 4 -j ACCEPT
+				COMMIT
+				*table2
+				:chain3 ACCEPT [0:0]
+				-A chain3 -m comment --comment "comment3"
+				-A chain3 -p tcp -m tcp --dport 5 -j ACCEPT
+				-A chain3 -p tcp -m tcp --dport 6 -j ACCEPT
+				:chain4 ACCEPT [0:0]
+				-A chain4 -m comment --comment "comment4"
+				-A chain4 -p tcp -m tcp --dport 7 -j ACCEPT
+				-A chain4 -p tcp -m tcp --dport 8 -j ACCEPT
+				COMMIT
+			EOS
+		)
+		comparison = IPTables::TablesComparison.new(@iptables1, iptables2)
+
+		assert_equal(
+			true,
+			comparison.equal?,
+			'Set of tables with same contents should evaluate as equal.'
+		)
+	end
+
+	def test_missing_table
+		iptables2 = IPTables::Tables.new(
+			<<-EOS.dedent
+				*table1
+				:chain1 ACCEPT [0:0]
+				-A chain1 -m comment --comment "comment1"
+				-A chain1 -p tcp -m tcp --dport 1 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 2 -j ACCEPT
+				:chain2 ACCEPT [0:0]
+				-A chain2 -m comment --comment "comment2"
+				-A chain2 -p tcp -m tcp --dport 3 -j ACCEPT
+				-A chain2 -p tcp -m tcp --dport 4 -j ACCEPT
+				COMMIT
+			EOS
+		)
+		comparison = IPTables::TablesComparison.new(@iptables1, iptables2)
+
+		assert_equal(
+			false,
+			comparison.equal?,
+			'Set of tables with one missing a table should evaluate as unequal.'
+		)
+	end
+
+	def test_additional_table
+		iptables2 = IPTables::Tables.new(
+			<<-EOS.dedent
+				*table1
+				:chain1 ACCEPT [0:0]
+				-A chain1 -m comment --comment "comment1"
+				-A chain1 -p tcp -m tcp --dport 1 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 2 -j ACCEPT
+				:chain2 ACCEPT [0:0]
+				-A chain2 -m comment --comment "comment2"
+				-A chain2 -p tcp -m tcp --dport 3 -j ACCEPT
+				-A chain2 -p tcp -m tcp --dport 4 -j ACCEPT
+				COMMIT
+				*table2
+				:chain3 ACCEPT [0:0]
+				-A chain3 -m comment --comment "comment3"
+				-A chain3 -p tcp -m tcp --dport 5 -j ACCEPT
+				-A chain3 -p tcp -m tcp --dport 6 -j ACCEPT
+				:chain4 ACCEPT [0:0]
+				-A chain4 -m comment --comment "comment4"
+				-A chain4 -p tcp -m tcp --dport 7 -j ACCEPT
+				-A chain4 -p tcp -m tcp --dport 8 -j ACCEPT
+				COMMIT
+				*table3
+				:chain5 ACCEPT [0:0]
+				-A chain5 -m comment --comment "comment5"
+				-A chain5 -p tcp -m tcp --dport 9 -j ACCEPT
+				-A chain5 -p tcp -m tcp --dport 10 -j ACCEPT
+				:chain6 ACCEPT [0:0]
+				-A chain6 -m comment --comment "comment6"
+				-A chain6 -p tcp -m tcp --dport 11 -j ACCEPT
+				-A chain6 -p tcp -m tcp --dport 12 -j ACCEPT
+				COMMIT
+			EOS
+		)
+		comparison = IPTables::TablesComparison.new(@iptables1, iptables2)
+
+		assert_equal(
+			false,
+			comparison.equal?,
+			'Set of tables with one having an additional table should evaluate as unequal.'
+		)
+	end
+
+	def test_differing_table
+		iptables2 = IPTables::Tables.new(
+			<<-EOS.dedent
+				*table1
+				:chain1 ACCEPT [0:0]
+				-A chain1 -m comment --comment "comment1"
+				-A chain1 -p tcp -m tcp --dport 11 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 2 -j ACCEPT
+				:chain2 ACCEPT [0:0]
+				-A chain2 -m comment --comment "comment2"
+				-A chain2 -p tcp -m tcp --dport 3 -j ACCEPT
+				-A chain2 -p tcp -m tcp --dport 4 -j ACCEPT
+				COMMIT
+				*table2
+				:chain3 ACCEPT [0:0]
+				-A chain3 -m comment --comment "comment3"
+				-A chain3 -p tcp -m tcp --dport 5 -j ACCEPT
+				-A chain3 -p tcp -m tcp --dport 6 -j ACCEPT
+				:chain4 ACCEPT [0:0]
+				-A chain4 -m comment --comment "comment4"
+				-A chain4 -p tcp -m tcp --dport 7 -j ACCEPT
+				-A chain4 -p tcp -m tcp --dport 8 -j ACCEPT
+				COMMIT
+			EOS
+		)
+		comparison = IPTables::TablesComparison.new(@iptables1, iptables2)
+
+		assert_equal(
+			false,
+			comparison.equal?,
+			'Set of tables with one having a differing rule should evaluate as unequal.'
+		)
+	end
+
+	def test_differing_chain_comments
+		iptables2 = IPTables::Tables.new(
+			<<-EOS.dedent
+				*table1
+				:chain1 ACCEPT [0:0]
+				-A chain1 -m comment --comment "changed comment1"
+				-A chain1 -p tcp -m tcp --dport 1 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 2 -j ACCEPT
+				:chain2 ACCEPT [0:0]
+				-A chain2 -m comment --comment "comment2"
+				-A chain2 -p tcp -m tcp --dport 3 -j ACCEPT
+				-A chain2 -p tcp -m tcp --dport 4 -j ACCEPT
+				COMMIT
+				*table2
+				:chain3 ACCEPT [0:0]
+				-A chain3 -m comment --comment "comment3"
+				-A chain3 -p tcp -m tcp --dport 5 -j ACCEPT
+				-A chain3 -p tcp -m tcp --dport 6 -j ACCEPT
+				:chain4 ACCEPT [0:0]
+				-A chain4 -m comment --comment "comment4"
+				-A chain4 -p tcp -m tcp --dport 7 -j ACCEPT
+				-A chain4 -p tcp -m tcp --dport 8 -j ACCEPT
+				COMMIT
+			EOS
+		)
+		comparison = IPTables::TablesComparison.new(@iptables1, iptables2)
+
+		comparison.ignore_comments
+		assert_equal(
+			true,
+			comparison.equal?,
+			'Set of tables that differ only by comments should evaluate as equal when ignoring comments.'
+		)
+
+		comparison.include_comments
+		assert_equal(
+			false,
+			comparison.equal?,
+			'Set of tables that differ only by comments should evaluate as unequal when including comments.'
+		)
+	end
+end
+
 class TestTable < Test::Unit::TestCase
 	def test_initialize
 		test_iptables = IPTables::Tables.new({

@@ -129,6 +129,59 @@ module IPTables
 		end
 	end
 
+	class TablesComparison
+		def initialize(tables1, tables2)
+			raise "must provide two tables" unless (tables1.class == IPTables::Tables) and (tables2.class == IPTables::Tables)
+			@tables1 = tables1
+			@tables2 = tables2
+
+			@including_comments = true
+			@compared = false
+		end
+
+		def compare
+			return if @compared
+			@equal = true
+
+			tables1_tables = @tables1.tables.keys.sort
+			tables2_tables = @tables2.tables.keys.sort
+			@only_in_current = tables1_tables - tables2_tables
+			@only_in_new = tables2_tables - tables1_tables
+			@equal = false if @only_in_current.any? or @only_in_new.any?
+
+			@table_diffs = []
+			(tables1_tables - @only_in_current - @only_in_new).each{ |table|
+				table_comparison = IPTables::TableComparison.new(@tables1.tables[table], @tables2.tables[table])
+				if @including_comments
+					table_comparison.include_comments
+				else
+					table_comparison.ignore_comments
+				end
+				next if table_comparison.equal?
+
+				@equal = false
+				@table_diffs << table_comparison
+			}
+
+			return nil
+		end
+
+		def ignore_comments
+			@including_comments = false
+			@compared = false
+		end
+
+		def include_comments
+			@including_comments = true
+			@compared = false
+		end
+
+		def equal?
+			self.compare
+			return @equal
+		end
+	end
+
 	class Table
 		# standard tables: nat, mangle, raw, filter
 		attr_reader :chains, :name, :node_addition_points, :my_iptables
