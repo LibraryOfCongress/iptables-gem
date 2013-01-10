@@ -923,6 +923,29 @@ class TestChainComparison < Test::Unit::TestCase
 			comparison.equal?,
 			'Chains with same rules and policies should evaluate as equal.'
 		)
+
+		assert_equal(
+			[],
+			comparison.as_array,
+			'When compared as array, chains with same rules and policies should return empty array.'
+		)
+	end
+
+	def test_unequal_names
+		test_iptables2 = IPTables::Tables.new(
+			<<-EOS.dedent
+				*table1
+				:chain2 ACCEPT [0:0]
+				-A chain2 -m comment --comment "comment1"
+				-A chain2 -p tcp -m tcp --dport 1 -j ACCEPT
+				-A chain2 -p tcp -m tcp --dport 2 -j ACCEPT
+				COMMIT
+			EOS
+		)
+		table2_chain = test_iptables2.tables['table1'].chains['chain2']
+		assert_raise( RuntimeError, 'first and second chain should have same name' ) { 
+			IPTables::ChainComparison.new(@table1_chain, table2_chain)
+		}
 	end
 
 	def test_unequal_comments
@@ -962,6 +985,16 @@ class TestChainComparison < Test::Unit::TestCase
 			comparison.new,
 			'When including comments, chains with same rules/policies but differing comments should have one new rule.'
 		)
+
+		assert_equal(
+			[ 
+				'Changed chain: chain1',
+				'-0: -A chain1 -m comment --comment "comment1"',
+				'+0: -A chain1 -m comment --comment "differing comment1"',
+			],
+			comparison.as_array,
+			'When compared as array, chains with changed rules should show this.'
+		)
 	end
 
 	def test_missing_rules
@@ -983,6 +1016,15 @@ class TestChainComparison < Test::Unit::TestCase
 			},
 			comparison.missing,
 			'Chains with missing rules should show this.'
+		)
+
+		assert_equal(
+			[ 
+				'Changed chain: chain1',
+				'-2: -A chain1 -p tcp -m tcp --dport 2 -j ACCEPT'
+			],
+			comparison.as_array,
+			'When compared as array, chains with missing rules should show this.'
 		)
 	end
 
@@ -1010,6 +1052,16 @@ class TestChainComparison < Test::Unit::TestCase
 			comparison.new,
 			'Chains with additional rules should show this.'
 		)
+
+		assert_equal(
+			[ 
+				'Changed chain: chain1',
+				'+2: -A chain1 -p tcp -m tcp --dport 11 -j ACCEPT',
+				'+3: -A chain1 -p tcp -m tcp --dport 12 -j ACCEPT' 
+			],
+			comparison.as_array,
+			'When compared as array, chains with additional rules should show this.'
+		)
 	end
 
 	def test_new_policy
@@ -1030,6 +1082,15 @@ class TestChainComparison < Test::Unit::TestCase
 			true,
 			comparison.new_policy?,
 			'When compared, chains with new policy should show this.'
+		)
+
+		assert_equal(
+			[ 
+				'Changed chain: chain1',
+				'New policy: REJECT' 
+			],
+			comparison.as_array,
+			'When compared as array, chains with new policy should show this.'
 		)
 	end
 end

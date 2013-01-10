@@ -434,6 +434,7 @@ module IPTables
 
 		def initialize(chain1, chain2)
 			raise "must provide two chains" unless (chain1.class == IPTables::Chain) and (chain2.class == IPTables::Chain)
+			raise "first and second chain should have same name" unless chain1.name == chain2.name
 			@chain1 = chain1
 			@chain2 = chain2
 
@@ -495,6 +496,25 @@ module IPTables
 		def new
 			self.compare
 			return @new_rules
+		end
+
+		def as_array
+			self.compare
+			array = []
+			return array if self.equal?
+			array << "Changed chain: #{@chain1.name}"
+			array << "New policy: #{@chain2.policy}" if self.new_policy?
+			if self.missing.any?
+				self.missing.keys.sort.each{ |rule_num|
+					array << "-#{rule_num}: #{self.missing[rule_num]}"
+				}
+			end
+			if self.new.any?
+				self.new.keys.sort.each{ |rule_num|
+					array << "+#{rule_num}: #{self.new[rule_num]}"
+				}
+			end
+			return array
 		end
 
 		def new_policy?
