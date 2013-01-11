@@ -293,6 +293,7 @@ module IPTables
 	class TableComparison
 		def initialize(table1, table2)
 			raise "must provide two tables" unless (table1.class == IPTables::Table) and (table2.class == IPTables::Table)
+			raise "table names should match" unless table1.name == table2.name
 			@table1 = table1
 			@table2 = table2
 
@@ -335,6 +336,46 @@ module IPTables
 		def include_comments
 			@including_comments = true
 			@compared = false
+		end
+
+		def missing
+			self.compare
+			return @only_in_current
+		end
+
+		def new
+			self.compare
+			return @only_in_new
+		end
+
+		def changed
+			self.compare
+			return @chain_diffs
+		end
+
+		def as_array
+			self.compare
+			array = []
+			return array if self.equal?
+			array << "Changed table: #{@table1.name}"
+			if self.missing.any?
+				self.missing.each{ |chain_name|
+					array << 'Missing chain:'
+					array.concat @table1.chains[chain_name].all_as_array
+				}
+			end
+			if self.new.any?
+				self.new.each{ |chain_name|
+					array << 'New chain:'
+					array.concat @table2.chains[chain_name].all_as_array
+				}
+			end
+			if self.changed.any?
+				self.changed.each{ |chain_comparison|
+					array.concat chain_comparison.as_array
+				}
+			end
+			return array
 		end
 
 		def equal?
@@ -381,6 +422,13 @@ module IPTables
 			rules = @rules.collect{ |rule| rule.as_array(comments)}.flatten
 			$log.debug(rules)
 			return rules
+		end
+
+		def all_as_array(comments = true)
+			return [
+				":#{@name} #{self.output_policy}",
+				self.as_array
+			].flatten
 		end
 
 		def merge(chain_object)

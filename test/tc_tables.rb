@@ -712,6 +712,33 @@ class TestTableComparison < Test::Unit::TestCase
 			comparison.equal?,
 			'Tables with same chains should evaluate as equal.'
 		)
+
+		assert_equal(
+			[],
+			comparison.as_array,
+			'When compared as array, tables with identical chains should return empty array.'
+		)
+	end
+
+	def test_unequal_name
+		test_iptables2 = IPTables::Tables.new(
+			<<-EOS.dedent
+				*table2
+				:chain1 ACCEPT [0:0]
+				-A chain1 -m comment --comment "comment1"
+				-A chain1 -p tcp -m tcp --dport 1 -j ACCEPT
+				-A chain1 -p tcp -m tcp --dport 2 -j ACCEPT
+				:chain2 ACCEPT [0:0]
+				-A chain2 -m comment --comment "comment2"
+				-A chain2 -p tcp -m tcp --dport 3 -j ACCEPT
+				-A chain2 -p tcp -m tcp --dport 4 -j ACCEPT
+				COMMIT
+			EOS
+		)
+		table2 = test_iptables2.tables['table2']
+		assert_raise( RuntimeError, 'compared table names should match' ) { 
+			IPTables::TableComparison.new(@table1, table2)
+		}
 	end
 
 	def test_missing_chain
@@ -732,6 +759,25 @@ class TestTableComparison < Test::Unit::TestCase
 			false,
 			comparison.equal?,
 			'Tables with missing chains should evaluate as unequal.'
+		)
+
+		assert_equal(
+			[ 'chain2' ],
+			comparison.missing,
+			'Two compared tables with one chain missing should show this.'
+		)
+
+		assert_equal(
+			[ 
+				'Changed table: table1',
+				'Missing chain:',
+				':chain2 ACCEPT',
+				'-A chain2 -m comment --comment "comment2"',
+				'-A chain2 -p tcp -m tcp --dport 3 -j ACCEPT',
+				'-A chain2 -p tcp -m tcp --dport 4 -j ACCEPT'
+			],
+			comparison.as_array,
+			'When compared as array, two compared tables with one chain missing should show this.'
 		)
 	end
 
@@ -762,6 +808,25 @@ class TestTableComparison < Test::Unit::TestCase
 			comparison.equal?,
 			'Tables with additional chains should evaluate as unequal.'
 		)
+
+		assert_equal(
+			[ 'chain3' ],
+			comparison.new,
+			'Two compared tables with one additional chain should show this.'
+		)
+
+		assert_equal(
+			[ 
+				'Changed table: table1',
+				'New chain:',
+				':chain3 ACCEPT',
+				'-A chain3 -m comment --comment "comment3"',
+				'-A chain3 -p tcp -m tcp --dport 5 -j ACCEPT',
+				'-A chain3 -p tcp -m tcp --dport 6 -j ACCEPT'
+			],
+			comparison.as_array,
+			'When compared as array, two compared tables with one additional chain should show this.'
+		)
 	end
 
 	def test_differing_chain
@@ -786,6 +851,17 @@ class TestTableComparison < Test::Unit::TestCase
 			false,
 			comparison.equal?,
 			'Tables with additional chains should evaluate as unequal.'
+		)
+
+		assert_equal(
+			[ 
+				'Changed table: table1',
+				'Changed chain: chain1',
+				'-1: -A chain1 -p tcp -m tcp --dport 1 -j ACCEPT',
+				'+1: -A chain1 -p tcp -m tcp --dport 11 -j ACCEPT'
+			],
+			comparison.as_array,
+			'When compared as array, two compared tables with one changed chain rule should show this.'
 		)
 	end
 
@@ -849,6 +925,18 @@ class TestChain < Test::Unit::TestCase
 			], 
 			@chain1.as_array,
 			'chain as array should produce known output'
+		)
+	end
+
+	def test_all_as_array
+		assert_equal(
+			[
+				':chain1 ACCEPT',
+				'-A chain1 -m comment --comment "BEGIN: in-bound traffic"',
+				'-A chain1 -j ACCEPT'
+			], 
+			@chain1.all_as_array,
+			'chain as array including its policy should produce known output'
 		)
 	end
 
