@@ -135,7 +135,15 @@ module IPTables
 
 			@table_diffs = []
 			(tables1_tables - @only_in_current - @only_in_new).each{ |table|
-				table_comparison = IPTables::TableComparison.new(@tables1.tables[table], @tables2.tables[table])
+				table1 = @tables1.tables[table]
+				table2 = @tables2.tables[table]
+
+				# nil tables are only created by policy, never parsed
+				# they mean "use the parsed policy here"
+				# which means "for comparison purposes, they are always equal"
+				next if table1.nil? or table2.nil?
+
+				table_comparison = IPTables::TableComparison.new(table1, table2)
 				if @including_comments
 					table_comparison.include_comments
 				else

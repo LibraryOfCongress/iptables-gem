@@ -365,20 +365,20 @@ class TestTablesComparison < Test::Unit::TestCase
 			<<-EOS.dedent
 				*table1
 				:chain1 ACCEPT [0:0]
+				:chain2 ACCEPT [0:0]
 				-A chain1 -m comment --comment "comment1"
 				-A chain1 -p tcp -m tcp --dport 1 -j ACCEPT
 				-A chain1 -p tcp -m tcp --dport 2 -j ACCEPT
-				:chain2 ACCEPT [0:0]
 				-A chain2 -m comment --comment "comment2"
 				-A chain2 -p tcp -m tcp --dport 3 -j ACCEPT
 				-A chain2 -p tcp -m tcp --dport 4 -j ACCEPT
 				COMMIT
 				*table2
 				:chain3 ACCEPT [0:0]
+				:chain4 ACCEPT [0:0]
 				-A chain3 -m comment --comment "comment3"
 				-A chain3 -p tcp -m tcp --dport 5 -j ACCEPT
 				-A chain3 -p tcp -m tcp --dport 6 -j ACCEPT
-				:chain4 ACCEPT [0:0]
 				-A chain4 -m comment --comment "comment4"
 				-A chain4 -p tcp -m tcp --dport 7 -j ACCEPT
 				-A chain4 -p tcp -m tcp --dport 8 -j ACCEPT
@@ -427,6 +427,36 @@ class TestTablesComparison < Test::Unit::TestCase
 			false,
 			comparison.equal?,
 			'Set of tables with one missing a table should evaluate as unequal.'
+		)
+	end
+
+	def test_nil_policy_table
+		iptables2 = IPTables::Tables.new({
+			'table1' => {
+				'chain1' => {
+					'policy' => 'ACCEPT',
+					'rules' => [
+						'-m comment --comment "comment1"',
+						'-p tcp -m tcp --dport 1 -j ACCEPT',
+						'-p tcp -m tcp --dport 2 -j ACCEPT',
+					]
+				},
+				'chain2' => {
+					'policy' => 'ACCEPT',
+					'rules' => [
+						'-m comment --comment "comment2"',
+						'-p tcp -m tcp --dport 3 -j ACCEPT',
+						'-p tcp -m tcp --dport 4 -j ACCEPT',
+					]
+				},
+			},
+			'table2' => nil
+		})
+		comparison = IPTables::TablesComparison.new(@iptables1, iptables2)
+
+		assert(
+			comparison.equal?,
+			'Set of tables which match except for one being nil should evaluate as equal.'
 		)
 	end
 
