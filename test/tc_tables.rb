@@ -349,59 +349,6 @@ class TestTables < Test::Unit::TestCase
 		)
 	end
 
-#	def test_compare
-#		test_iptables1 = IPTables::Tables.new(
-#			<<-EOS.dedent
-#				*table2
-#				:INPUT DROP [0:0]
-#				COMMIT
-#				*table1
-#				:INPUT DROP [0:0]
-#				COMMIT
-#				*table3
-#				:INPUT DROP [0:0]
-#				COMMIT
-#			EOS
-#		)
-#		test_iptables2 = IPTables::Tables.new(
-#			<<-EOS.dedent
-#				*table4
-#				:INPUT DROP [0:0]
-#				COMMIT
-#				*table3
-#				:INPUT DROP [0:0]
-#				-A INPUT -J ACCEPT
-#				COMMIT
-#				*table2
-#				:INPUT DROP [0:0]
-#				COMMIT
-#			EOS
-#		)
-#
-#		assert_raise( RuntimeError ) { test_iptables1.compare(nil) }
-#
-#		$log.level = Logger::DEBUG
-#		comparison = test_iptables1.compare(test_iptables2)
-#		$log.level = Logger::WARN
-#		assert_equal(
-#			{
-#				"only_in_self"=>[
-#					'*table1',
-#					':INPUT DROP',
-#					'COMMIT'
-#				], 
-#				"only_in_compared"=>[
-#					'-A INPUT -J ACCEPT',
-#					'*table4',
-#					':INPUT DROP',
-#					'COMMIT'
-#				]
-#			},
-#			comparison,
-#			'comparison should show all missing rules from first table, and extra rules in second table'
-#		)
-#	end
-
 	def test_get_node_additions
 		# not testing this directly here?
 	end
@@ -453,8 +400,7 @@ class TestTablesComparison < Test::Unit::TestCase
 		iptables2 = IPTables::Tables.new( @iptables_text )
 		comparison = IPTables::TablesComparison.new(@iptables1, iptables2)
 
-		assert_equal(
-			true,
+		assert(
 			comparison.equal?,
 			'Set of tables with same contents should evaluate as equal.'
 		)
@@ -590,8 +536,7 @@ class TestTablesComparison < Test::Unit::TestCase
 		comparison = IPTables::TablesComparison.new(@iptables1, iptables2)
 
 		comparison.ignore_comments
-		assert_equal(
-			true,
+		assert(
 			comparison.equal?,
 			'Set of tables that differ only by comments should evaluate as equal when ignoring comments.'
 		)
@@ -707,8 +652,7 @@ class TestTableComparison < Test::Unit::TestCase
 		table2 = test_iptables2.tables['table1']
 		comparison = IPTables::TableComparison.new(@table1, table2)
 
-		assert_equal(
-			true,
+		assert(
 			comparison.equal?,
 			'Tables with same chains should evaluate as equal.'
 		)
@@ -884,8 +828,7 @@ class TestTableComparison < Test::Unit::TestCase
 		comparison = IPTables::TableComparison.new(@table1, table2)
 
 		comparison.ignore_comments
-		assert_equal(
-			true,
+		assert(
 			comparison.equal?,
 			'Tables with chains that differ only by comments should evaluate as equal when ignoring comments.'
 		)
@@ -1006,8 +949,7 @@ class TestChainComparison < Test::Unit::TestCase
 		table2_chain = test_iptables2.tables['table1'].chains['chain1']
 		comparison = IPTables::ChainComparison.new(@table1_chain, table2_chain)
 
-		assert_equal(
-			true,
+		assert(
 			comparison.equal?,
 			'Chains with same rules and policies should evaluate as equal.'
 		)
@@ -1051,8 +993,7 @@ class TestChainComparison < Test::Unit::TestCase
 		comparison = IPTables::ChainComparison.new(@table1_chain, table2_chain)
 
 		comparison.ignore_comments
-		assert_equal(
-			true,
+		assert(
 			comparison.equal?,
 			'When ignoring comments, chains with same rules/policies but differing comments should evaluate as equal.'
 		)
@@ -1166,8 +1107,7 @@ class TestChainComparison < Test::Unit::TestCase
 		table2_chain = test_iptables2.tables['table1'].chains['chain1']
 		comparison = IPTables::ChainComparison.new(@table1_chain, table2_chain)
 
-		assert_equal(
-			true,
+		assert(
 			comparison.new_policy?,
 			'When compared, chains with new policy should show this.'
 		)
