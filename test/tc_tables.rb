@@ -404,6 +404,11 @@ class TestTablesComparison < Test::Unit::TestCase
 			comparison.equal?,
 			'Set of tables with same contents should evaluate as equal.'
 		)
+		assert_equal(
+			[],
+			comparison.as_array,
+			'Array output of tables with same contents should evaluate as empty.'
+		)
 	end
 
 	def test_missing_table
@@ -427,6 +432,21 @@ class TestTablesComparison < Test::Unit::TestCase
 			false,
 			comparison.equal?,
 			'Set of tables with one missing a table should evaluate as unequal.'
+		)
+		assert_equal(
+			comparison.as_array,
+			[
+				"Missing table: table2",
+				":chain3 ACCEPT",
+				":chain4 ACCEPT",
+				"-A chain3 -m comment --comment \"comment3\"",
+				"-A chain3 -p tcp -m tcp --dport 5 -j ACCEPT",
+				"-A chain3 -p tcp -m tcp --dport 6 -j ACCEPT",
+				"-A chain4 -m comment --comment \"comment4\"",
+				"-A chain4 -p tcp -m tcp --dport 7 -j ACCEPT",
+				"-A chain4 -p tcp -m tcp --dport 8 -j ACCEPT"
+			],
+			'Array output of tables with one missing a table should evaluate to known values.'
 		)
 	end
 
@@ -457,6 +477,11 @@ class TestTablesComparison < Test::Unit::TestCase
 		assert(
 			comparison.equal?,
 			'Set of tables which match except for one being nil should evaluate as equal.'
+		)
+		assert_equal(
+			[],
+			comparison.as_array,
+			'Array output of tables which match except for one being nil should evaluate as empty.'
 		)
 	end
 
@@ -502,6 +527,21 @@ class TestTablesComparison < Test::Unit::TestCase
 			comparison.equal?,
 			'Set of tables with one having an additional table should evaluate as unequal.'
 		)
+		assert_equal(
+			comparison.as_array,
+			[
+				"New table: table3",
+				":chain5 ACCEPT",
+				":chain6 ACCEPT",
+				"-A chain5 -m comment --comment \"comment5\"",
+				"-A chain5 -p tcp -m tcp --dport 9 -j ACCEPT",
+				"-A chain5 -p tcp -m tcp --dport 10 -j ACCEPT",
+				"-A chain6 -m comment --comment \"comment6\"",
+				"-A chain6 -p tcp -m tcp --dport 11 -j ACCEPT",
+				"-A chain6 -p tcp -m tcp --dport 12 -j ACCEPT"
+			],
+			'Array output of tables with one having an additional table should evaluate to known values.'
+		)
 	end
 
 	def test_differing_table
@@ -535,6 +575,16 @@ class TestTablesComparison < Test::Unit::TestCase
 			false,
 			comparison.equal?,
 			'Set of tables with one having a differing rule should evaluate as unequal.'
+		)
+		assert_equal(
+			comparison.as_array,
+			[
+				"Changed table: table1",
+				"Changed chain: chain1",
+				"-1: -A chain1 -p tcp -m tcp --dport 1 -j ACCEPT",
+				"+1: -A chain1 -p tcp -m tcp --dport 11 -j ACCEPT"
+			],
+			'Array output of tables with one having a differing rule should evaluate to known values.'
 		)
 	end
 
@@ -570,12 +620,27 @@ class TestTablesComparison < Test::Unit::TestCase
 			comparison.equal?,
 			'Set of tables that differ only by comments should evaluate as equal when ignoring comments.'
 		)
+		assert_equal(
+			comparison.as_array,
+			[], 
+			'Array output of tables that differ only by comments should evaluate as empty when ignoring comments.'
+		)
 
 		comparison.include_comments
 		assert_equal(
 			false,
 			comparison.equal?,
 			'Set of tables that differ only by comments should evaluate as unequal when including comments.'
+		)
+		assert_equal(
+			comparison.as_array,
+			[
+				"Changed table: table1",
+				"Changed chain: chain1",
+				"-0: -A chain1 -m comment --comment \"comment1\"",
+				"+0: -A chain1 -m comment --comment \"changed comment1\""
+			],
+			'Array output of tables that differ only by comments should evaluate to known values when ignoring comments.'
 		)
 	end
 end

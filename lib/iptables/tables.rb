@@ -118,6 +118,7 @@ module IPTables
 			raise "must provide two tables" unless (tables1.class == IPTables::Tables) and (tables2.class == IPTables::Tables)
 			@tables1 = tables1
 			@tables2 = tables2
+			@table_diffs = []
 
 			@including_comments = true
 			@compared = false
@@ -171,6 +172,30 @@ module IPTables
 		def equal?
 			self.compare
 			return @equal
+		end
+
+		def as_array
+			self.compare
+			array = []
+			return array if self.equal?
+			if @only_in_current.any?
+				@only_in_current.each{ |table_name|
+					array << "Missing table: #{table_name}"
+					array.concat @tables1.tables[table_name].as_array
+				}
+			end
+			if @only_in_new.any?
+				@only_in_new.each{ |table_name|
+					array << "New table: #{table_name}"
+					array.concat @tables2.tables[table_name].as_array
+				}
+			end
+			if @table_diffs.any?
+				@table_diffs.each{ |table_comparison|
+					array.concat table_comparison.as_array
+				}
+			end
+			return array
 		end
 	end
 
