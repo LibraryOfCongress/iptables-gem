@@ -1,0 +1,30 @@
+{
+  "rules": {
+    "nat": {
+      "INPUT": {
+        "policy": "ACCEPT"
+      },
+      "OUTPUT": {
+        "policy": "ACCEPT"
+      },
+      "POSTROUTING": {
+        "policy": "ACCEPT"
+      },
+      "PREROUTING": {
+        "policy": "ACCEPT"
+      }
+    },
+    "filter": {
+      "in_*": {
+        "additions": []
+      }, 
+      "in_peers": {
+        "additions": []
+      }, 
+      "in_public": {
+        "additions": []
+      }
+    }
+  }
+}
+

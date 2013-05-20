@@ -1,0 +1,81 @@
+{
+  "services": {
+    "dhcp": "-p udp -m udp --sport 67:68 --dport 67:68 -m state --state NEW,ESTABLISHED -j ACCEPT",
+    "domain": [
+      "-p udp -m udp --sport 53 --dport 53 -m state --state NEW,ESTABLISHED -j ACCEPT",
+      {
+        "service_udp": "53"
+      },
+      "-p tcp -m tcp --sport 53 --dport 53 -m state --state NEW,ESTABLISHED -j ACCEPT",
+      {
+        "service_tcp": "53"
+      }
+    ],
+    "http": 80,
+    "https": 443,
+    "icmp": "-p icmp -m state --state NEW,ESTABLISHED -j ACCEPT",
+    "ipp": 631,
+    "jabber": [
+      {
+        "service_tcp": "5222"
+      },
+      {
+        "service_tcp": "5223"
+      }
+    ],
+    "ldap": 389,
+    "ldaps": 636,
+    "mysql": 3306,
+    "nfs": [
+      {
+        "service_tcp": "2049"
+      },
+      {
+        "service_udp": "2049"
+      }
+    ],
+    "ntp": [
+      "-p udp -m udp --sport 123 --dport 123 -m state --state NEW,ESTABLISHED -j ACCEPT",
+      {
+        "service_udp": "123"
+      },
+      "-p tcp -m tcp --sport 123 --dport 123 -m state --state NEW,ESTABLISHED -j ACCEPT",
+      {
+        "service_tcp": "123"
+      }
+    ],
+    "portmap": [
+      {
+        "service_tcp": "111"
+      },
+      {
+        "service_udp": "111"
+      }
+    ],
+    "postgres": 5432,
+    "rabbitmq": [
+      {
+        "service_tcp": "5670:5680"
+      },
+      {
+        "service_udp": "5670:5680"
+      }
+    ],
+    "smtp": 25,
+    "snmp": 161,
+    "ssh": 22,
+    "syslog": [
+      "-p udp -m udp --sport 514 --dport 514 -m state --state NEW,ESTABLISHED -j ACCEPT",
+      {
+        "service_udp": "514"
+      },
+      "-p tcp -m tcp --sport 514 --dport 514 -m state --state NEW,ESTABLISHED -j ACCEPT",
+      {
+        "service_tcp": "514"
+      }
+    ],
+    "tftp": {
+      "service_udp": "69"
+    }
+  }
+}

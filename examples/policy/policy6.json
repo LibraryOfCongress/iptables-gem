@@ -1,0 +1,8 @@
+{
+  "policy6": {
+    "filter": "DROP",
+    "mangle": "DROP",
+    "nat": "DROP",
+    "raw": "DROP"
+  }
+}

@@ -1,3 +1,9 @@
+0.2.3
+- Compare two iptables.
+- Add documentation.
+- Add Nagios example script
+- Add example policy files.
+
 0.2.2
 - Generate multi-table output correctly.
 

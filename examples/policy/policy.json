@@ -1,0 +1,208 @@
+{
+  "policy": {
+    "filter": {
+      "INPUT": {
+        "policy": "DROP",
+        "rules": [
+          {
+            "comment": "BEGIN: in-bound traffic"
+          },
+          "-i lo -j ACCEPT",
+          {
+            "node_addition_points": [
+              "INPUT"
+            ]
+          },
+          {
+            "macro": "accept-in_storage",
+            "requires_primitive": "storage.address"
+          },
+          {
+            "macro": "jump-in_peers"
+          },
+          {
+            "macro": "jump-in_public"
+          },
+          {
+            "macro": "accept-related"
+          },
+          {
+            "macro": "log-drop"
+          }
+        ]
+      },
+      "FORWARD": {
+        "policy": "DROP",
+        "rules": [
+          {
+            "comment": "BEGIN: forwarded traffic"
+          },
+          {
+            "node_addition_points": [
+              "FORWARD"
+            ]
+          },
+          {
+            "macro": "accept-related"
+          },
+          {
+            "macro": "log-drop"
+          }
+        ]
+      },
+      "OUTPUT": {
+        "policy": "ACCEPT"
+      },
+      "in_peers": {
+        "policy": "-",
+        "rules": [
+          {
+            "comment": "BEGIN: chain for my internet ip address on internet-facing network card from peer hosts"
+          },
+          {
+            "macro": "accept-established"
+          },
+          {
+            "service": "icmp"
+          },
+          {
+            "service": "ssh"
+          },
+          {
+            "node_addition_points": [
+              "in_peers",
+              "in_*"
+            ]
+          },
+          {
+            "macro": "accept-related"
+          },
+          {
+            "macro": "log-reject"
+          }
+        ]
+      },
+      "in_public": {
+        "policy": "-",
+        "rules": [
+          {
+            "comment": "BEGIN: chain for my internet ip address on internet-facing network card from internet hosts"
+          },
+          {
+            "macro": "return-iana"
+          },
+          {
+            "macro": "return-martians"
+          },
+          {
+            "macro": "accept-established"
+          },
+          {
+            "macro": "filter-attacks_and_probes"
+          },
+          {
+            "node_addition_points": [
+              "in_public",
+              "in_*"
+            ]
+          },
+          {
+            "macro": "accept-related"
+          },
+          {
+            "macro": "log-drop"
+          }
+        ]
+      },
+      "strict_fragments": {
+        "policy": "-",
+        "rules": [
+          {
+            "comment": "BEGIN: chain for handling packet fragments"
+          },
+          {
+            "ulog": ""
+          },
+          "-j DROP"
+        ]
+      },
+      "strict_icmpflood": {
+        "policy": "-",
+        "rules": [
+          {
+            "comment": "BEGIN: chain for handling icmp floods"
+          },
+          "-m limit --limit 100/sec --limit-burst 50 -j RETURN",
+          {
+            "ulog": ""
+          },
+          "-j DROP"
+        ]
+      },
+      "strict_malbad": {
+        "policy": "-",
+        "rules": [
+          {
+            "comment": "BEGIN: chain for handling malformed/bad packets"
+          },
+          {
+            "ulog": ""
+          },
+          "-j DROP"
+        ]
+      },
+      "strict_malnull": {
+        "policy": "-",
+        "rules": [
+          {
+            "comment": "BEGIN: chain for handling malformed/null packets"
+          },
+          {
+            "ulog": ""
+          },
+          "-j DROP"
+        ]
+      },
+      "strict_malxmas": {
+        "policy": "-",
+        "rules": [
+          {
+            "comment": "BEGIN: chain for handling malformed/xmas packets"
+          },
+          {
+            "ulog": ""
+          },
+          "-j DROP"
+        ]
+      },
+      "strict_nosyn": {
+        "policy": "-",
+        "rules": [
+          {
+            "comment": "BEGIN: chain for handling new TCP packets without SYN"
+          },
+          {
+            "ulog": ""
+          },
+          "-j DROP"
+        ]
+      },
+      "strict_synflood": {
+        "policy": "-",
+        "rules": [
+          {
+            "comment": "BEGIN: chain for handling Syn floods"
+          },
+          "-m limit --limit 100/sec --limit-burst 50 -j RETURN",
+          {
+            "ulog": ""
+          },
+          "-j DROP"
+        ]
+      }
+    },
+    "mangle": null,
+    "nat": null,
+    "raw": null
+  }
+}

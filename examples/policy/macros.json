@@ -1,0 +1,92 @@
+{
+  "macros": {
+    "accept-established": "-m state --state ESTABLISHED -j ACCEPT",
+    "accept-new_established": "-m state --state NEW,ESTABLISHED -j ACCEPT",
+    "accept-in_storage": [
+      {
+        "comment": "_ My storage ip address from storage addresses"
+      },
+      {
+        "interpolated": "-s <% storage.subnet %> -d <% storage.address %> -i <% storage.device %> -j ACCEPT",
+        "requires_primitive": "storage.address"
+      }
+    ],
+    "accept-related": "-m state --state RELATED -j ACCEPT",
+    "filter-attacks_and_probes": [
+      {
+        "comment": "_ Protect against attacks and probes"
+      },
+      "-m state --state INVALID -j DROP",
+      "-f -j strict_fragments",
+      "-p tcp -m state --state NEW -m tcp ! --tcp-flags FIN,SYN,RST,ACK SYN -j strict_nosyn",
+      "-p icmp -m icmp --icmp-type 8 -j strict_icmpflood",
+      "-p tcp -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -j strict_synflood",
+      "-p tcp -m tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG FIN,SYN,RST,PSH,ACK,URG -j strict_malxmas",
+      "-p tcp -m tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG NONE -j strict_malnull",
+      "-p tcp -m tcp --tcp-flags FIN,SYN FIN,SYN -j strict_malbad",
+      "-p tcp -m tcp --tcp-flags SYN,RST SYN,RST -j strict_malbad",
+      "-p tcp -m tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG FIN,SYN,RST,ACK,URG -j strict_malbad",
+      "-p tcp -m tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG FIN,PSH,URG -j strict_malbad"
+    ],
+    "jump-in_peers": [
+      {
+        "comment": "_ My internet ip address on internet-facing network"
+      },
+      {
+        "interpolated": "-s <% internet.subnet.vpn %> -d <% internet.address %> -i <% internet.device %> -j in_peers"
+      },
+      {
+        "interpolated": "-s <% internet.subnet.internet %> -d <% internet.address %> -i <% internet.device %> -j in_peers"
+      }
+    ],
+    "jump-in_public": [
+      {
+        "comment": "_ Everything else"
+      },
+      {
+        "interpolated": "-d <% internet.address %> -i <% internet.device %> -j in_public"
+      }
+    ],
+    "log-drop": [
+      {
+        "comment": "_ Log and drop"
+      },
+      {
+        "ulog": ""
+      },
+      "-j DROP"
+    ],
+    "log-reject": [
+      {
+        "comment": "_ Log and reject"
+      },
+      {
+        "ulog": "-p tcp"
+      },
+      "-p tcp -j REJECT --reject-with tcp-reset"
+    ],
+    "return-iana": [
+      {
+        "comment": "_ IANA-reserved address spaces"
+      },
+      {
+        "interpolated": "-s <% iana_reserved %> -j RETURN"
+      }
+    ],
+    "return-martians": [
+      {
+        "comment": "Requests from networks that should never appear here"
+      },
+      {
+        "interpolated": "-s <% internet.subnet.vpn %> -j RETURN"
+      },
+      {
+        "interpolated": "-s <% internet.subnet.internet %> -j RETURN"
+      },
+      {
+        "interpolated": "-s <% storage.subnet %> -j RETURN",
+        "requires_primitive": "storage.address"
+      }
+    ]
+  }
+}
