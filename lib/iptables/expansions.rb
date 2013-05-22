@@ -150,7 +150,7 @@ module IPTables
 			@interpolations = interpolations
 			@initial_string = initial_string
 			@child = nil
-			if @initial_string =~ @@interpolation_regex:
+			if @initial_string =~ @@interpolation_regex
 				self.add_child($1, $2, $3)
 			else
 				$log.debug("completed substitution: #{@initial_string}")

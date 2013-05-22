@@ -32,7 +32,7 @@ module IPTables
 			raise "failed to substitute unknown primitive: #{the_first}" unless @children.has_key? the_first
 			case @children[the_first]
 			when Primitives
-				raise "failed to substitute partial primitive: #{the_first}" unless the_rest.any?
+				raise "failed to substitute partial primitive: #{the_first}" if the_rest.empty?
 				return @children[the_first].substitute(the_rest)
 			else
 				return @children[the_first]
