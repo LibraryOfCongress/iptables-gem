@@ -361,7 +361,7 @@ end
 
 class TestTablesComparison < Test::Unit::TestCase
 	def setup
-		@iptables_text = 
+		@iptables_table1 = 
 			<<-EOS.dedent
 				*table1
 				:chain1 ACCEPT [0:0]
@@ -373,6 +373,10 @@ class TestTablesComparison < Test::Unit::TestCase
 				-A chain2 -p tcp -m tcp --dport 3 -j ACCEPT
 				-A chain2 -p tcp -m tcp --dport 4 -j ACCEPT
 				COMMIT
+			EOS
+		@iptables_text = 
+			"#{@iptables_table1}\n"+
+			<<-EOS.dedent
 				*table2
 				:chain3 ACCEPT [0:0]
 				:chain4 ACCEPT [0:0]
@@ -450,7 +454,7 @@ class TestTablesComparison < Test::Unit::TestCase
 		)
 	end
 
-	def test_nil_policy_table
+	def test_nil_existing_policy_table
 		iptables2 = IPTables::Tables.new({
 			'table1' => {
 				'chain1' => {
@@ -476,12 +480,48 @@ class TestTablesComparison < Test::Unit::TestCase
 
 		assert(
 			comparison.equal?,
-			'Set of tables which match except for one being nil should evaluate as equal.'
+			'Set of tables which match except one is nil and one is a table should evaluate as equal.'
 		)
 		assert_equal(
 			[],
 			comparison.as_array,
-			'Array output of tables which match except for one being nil should evaluate as empty.'
+			'Array output of tables which match except one one is nil and one is a table should evaluate as empty.'
+		)
+	end
+
+	def test_nil_missing_policy_table
+		iptables1 = IPTables::Tables.new( @iptables_table1 )
+		iptables2 = IPTables::Tables.new({
+			'table1' => {
+				'chain1' => {
+					'policy' => 'ACCEPT',
+					'rules' => [
+						'-m comment --comment "comment1"',
+						'-p tcp -m tcp --dport 1 -j ACCEPT',
+						'-p tcp -m tcp --dport 2 -j ACCEPT',
+					]
+				},
+				'chain2' => {
+					'policy' => 'ACCEPT',
+					'rules' => [
+						'-m comment --comment "comment2"',
+						'-p tcp -m tcp --dport 3 -j ACCEPT',
+						'-p tcp -m tcp --dport 4 -j ACCEPT',
+					]
+				},
+			},
+			'table2' => nil
+		})
+		comparison = IPTables::TablesComparison.new(iptables1, iptables2)
+
+		assert(
+			comparison.equal?,
+			'Set of tables which match except one is nil and one is missing should evaluate as equal.'
+		)
+		assert_equal(
+			[],
+			comparison.as_array,
+			'Array output of tables which match except one is nil and one is missing should evaluate as empty.'
 		)
 	end
 

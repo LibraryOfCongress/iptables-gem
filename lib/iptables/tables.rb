@@ -130,8 +130,8 @@ module IPTables
 
 			tables1_tables = @tables1.tables.keys.sort
 			tables2_tables = @tables2.tables.keys.sort
-			@only_in_current = tables1_tables - tables2_tables
-			@only_in_new = tables2_tables - tables1_tables
+			@only_in_current = (tables1_tables - tables2_tables).reject{ |t| @tables1.tables[t].nil? }
+			@only_in_new = (tables2_tables - tables1_tables).reject{ |t| @tables2.tables[t].nil? }
 			@equal = false if @only_in_current.any? or @only_in_new.any?
 
 			@table_diffs = []
@@ -187,6 +187,7 @@ module IPTables
 			if @only_in_new.any?
 				@only_in_new.each{ |table_name|
 					array << "New table: #{table_name}"
+					next if @tables2.tables[table_name].nil?
 					array.concat @tables2.tables[table_name].as_array
 				}
 			end
