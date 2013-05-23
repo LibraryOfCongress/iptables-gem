@@ -11,14 +11,15 @@ Requirements
 
 ## Ruby:
 
-* Ruby: 1.8+
+* Ruby: 1.8
+* Likely also works on 1.9, but testing is giving me fits so I am ignoring it for now
 
 ## Platforms:
 
 The following platforms and versions are tested:
 
 * Ubuntu 10.04, 12.04
-* CentOS 6.3
+* CentOS 6.4, Red Hat 6.4
 
 Ruby Usage
 ==========
@@ -129,6 +130,7 @@ Changes/Features I would like to see:
 * `ulog` has `-p tcp` but this seems awkward; is it even useful?
 * Do other stuff like ebtables too? Not sure it's in scope here. Certainly the gem name would need to be reconsidered.
 * Generate better error messages when we encounter failures parsing configurations.
+* Move development/testing/coverage environment to Ruby 1.9
 
 License and Authors
 ===================

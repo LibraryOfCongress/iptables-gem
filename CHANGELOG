@@ -1,3 +1,8 @@
+0.2.4
+- Fix comparison corner case.
+- Nagios example script can read iptables output from file.
+- Fix Ruby 1.9-unfriendly bugs
+
 0.2.3
 - Compare two iptables.
 - Add documentation.
