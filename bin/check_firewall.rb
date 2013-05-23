@@ -5,6 +5,7 @@ config_path = '/var/lib/iptables'
 json_configs = %w/policy6 policy services macros rules primitives/
 @verbosity = 0
 compare_comments = true
+iptables_save_path = nil
 
 def exit_status(status = 0)
 	if @verbosity > 0
@@ -53,12 +54,13 @@ ARGV.each{ |arg|
 		puts "
 		### #{$0} ###
 		check whether firewall is applied
-		firewall configurations path: #{config_path}
+		path to configurations for generated firewall:
+		  #{config_path}
 		configuration json files:
 		  #{json_configs.join(' ')}
 		options:
 		  -c=/path/to/configuration:
-		     path for firewall configurations
+		     path for configurations for generated firewall
 		     leave blank for default
 		  -h: this help
 		  -ignore-comments:
@@ -66,6 +68,9 @@ ARGV.each{ |arg|
 		  -l=/path/to/library:
 		     path to iptables library, for testing
 		     leave blank for default
+		  -s=/path/to/iptables-save/output:
+		     path to saved text output from `iptables-save`
+		     if you specify this, it will be used instead of running `iptables-save`
 		  -v: run verbosely
 		     add more Vs for increased verbosity
 		".dedent
@@ -80,6 +85,10 @@ ARGV.each{ |arg|
 		raise "library path not found" unless File.directory? $1
 		require 'rubygems'
 		$:.unshift $1
+
+	when /^-s/
+		raise "specify `iptables-save` output path using format '-s=/the/path'" unless arg.match(/^-s=(.+)/)
+		iptables_save_path = $1
 
 	when /^-(v+)/
 		@verbosity = $1.length
@@ -129,7 +138,7 @@ json_configs.each{ |config_type|
 	config_file_path = "#{config_path}/#{config_type}.json"
 	puts " - #{config_file_path}".green if @verbosity > 1
 	unless File.readable? config_file_path
-		puts "UNKNOWN: could not read #{config_file_path}"
+		puts "UNKNOWN: could not read config_file_path #{config_file_path}"
 		exit_status 3
 	end
 	begin
@@ -153,8 +162,18 @@ rescue Exception => e
 	exit_status 3
 end
 
-puts "retrieving active firewall".green if @verbosity > 0
-iptables_save = %x/iptables-save/
+if iptables_save_path.nil?
+	puts "retrieving active firewall".green if @verbosity > 0
+	iptables_save = %x/iptables-save/
+else
+	puts "retrieving saved firewall".green if @verbosity > 0
+	puts " - #{iptables_save_path}".green if @verbosity > 1
+	unless File.readable? iptables_save_path
+		puts "UNKNOWN: could not read iptables_save_path #{iptables_save_path}"
+		exit_status 3
+	end
+	iptables_save = File.readlines(iptables_save_path).join()
+end
 puts '--- RETRIEVED FIREWALL BEGIN ---'.yellow if @verbosity > 1
 puts iptables_save if @verbosity > 1
 puts '--- RETRIEVED FIREWALL END ---'.yellow if @verbosity > 1
