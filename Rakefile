@@ -7,9 +7,9 @@ task :default => [:rcov]
 
 desc "RCov"
 Rcov::RcovTask.new do | t |
-	t.libs << 'test'
-	t.test_files = FileList[ 'test/tc_all.rb' ]
-	t.rcov_opts << '--exclude /var'
+  t.libs << 'test'
+  t.test_files = FileList[ 'test/tc_all.rb' ]
+  t.rcov_opts << '--exclude /var'
 end
 
 # This builds the actual gem. For details of what all these options
@@ -18,14 +18,14 @@ end
 #   http://rubygems.org/read/chapter/20
 #
 spec = Gem::Specification.new do |s|
-	raise 'where is the CHANGELOG?' unless f = File.open('CHANGELOG')
+  raise 'where is the CHANGELOG?' unless f = File.open('CHANGELOG')
 
   # Change these as appropriate
   s.name              = "iptables"
   s.version           = f.readlines.first.chomp
   s.summary           = "Generate and read iptables rules with Ruby"
   s.author            = "Kurt Yoder"
-	# don't have these yet:
+  # don't have these yet:
   #s.email             = "youremail@example.com"
   #s.homepage          = "http://yoursite.example.com"
 
