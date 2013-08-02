@@ -749,3 +749,35 @@ class TestChainComparison < Test::Unit::TestCase
     )
   end
 end
+
+class TestRuleComparison < Test::Unit::TestCase
+  def setup
+    @iptables_text = 
+      <<-EOS.dedent
+        *table1
+        :chain1 ACCEPT [0:0]
+        -A chain1 -s 192.168.100.0/255.255.255.0 -d 192.168.100.107 -i eth1 -j ACCEPT
+        COMMIT
+      EOS
+    @table1_chain = IPTables::Tables.new(@iptables_text).tables['table1'].chains['chain1']
+  end
+
+  def test_equal
+    iptables2_text = 
+      <<-EOS.dedent
+        *table1
+        :chain1 ACCEPT [0:0]
+        -A chain1 -s 192.168.100.0/24 -d 192.168.100.107/32 -i eth1 -j ACCEPT
+        COMMIT
+      EOS
+    test_iptables2 = IPTables::Tables.new(iptables2_text)
+    table2_chain = test_iptables2.tables['table1'].chains['chain1']
+    comparison = IPTables::ChainComparison.new(@table1_chain, table2_chain)
+    comparison.debug
+
+    assert(
+      comparison.equal?,
+      'Rules with variant forms of ip/subnet should evaluate as equal.'
+    )
+  end
+end

@@ -420,7 +420,7 @@ module IPTables
 
   class Chain
     # example chain names in filter table: INPUT, FORWARD, OUTPUT
-    attr_reader :additions, :name, :node_addition_points, :my_table, :policy, :rules
+    attr_reader :additions, :name, :node_addition_points, :my_table, :policy
 
     def initialize(name, chain_info_hash, my_table)
       @name = name
@@ -448,6 +448,13 @@ module IPTables
 
     def output_policy()
       return (@policy == nil) ? '-' : @policy
+    end
+
+    def rules(comments = true)
+      return @rules if comments
+
+      # rule comments unwanted
+      return @rules.reject{ |rule| rule.comment }
     end
     
     def as_array(comments = true)
@@ -522,6 +529,7 @@ module IPTables
 
       @including_comments = true
       @compared = false
+      @debugging = false
     end
 
     def ignore_comments
@@ -532,6 +540,10 @@ module IPTables
     def include_comments
       @including_comments = true
       @compared = false
+    end
+
+    def debug(enable = true)
+      @debugging = enable
     end
 
     def compare
@@ -553,6 +565,13 @@ module IPTables
           end
           @equal = false
         }
+      }
+
+      @new_rules.each{ |position, element|
+        next unless @missing_rules.has_key? position
+        return unless @debugging
+        rule_comparison = RuleComparison.new(element, @missing_rules[position])
+        rule_comparison.equal?
       }
 
       @new_policy = false
@@ -846,6 +865,30 @@ module IPTables
           self.add_child(other_rule_object.rule_hash)
         }
       }
+    end
+  end
+
+  class RuleComparison
+    require 'netaddr'
+
+    def initialize(rule1, rule2)
+      @rule1 = self.split(rule1)
+      @rule2 = self.split(rule2)
+    end
+
+    def split(rule)
+      parts = rule.split
+      count = parts.length
+      return nil unless count > 2
+      return parts[2, count]
+    end
+
+    def equal?
+      return false if @rule1.nil? or @rule2.nil?
+      return false unless @rule1.length == @rule2.length
+      puts
+      puts @rule1
+      puts
     end
   end
 end
