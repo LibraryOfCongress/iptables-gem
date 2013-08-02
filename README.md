@@ -1,7 +1,7 @@
-Description
 ===========
+Description
 
-Iptables is a Ruby API for parsing, generating, and comparing Linux
+Iptables-gem is a Ruby API for parsing, generating, and comparing Linux
 iptables rules. It is configured using JSON and oriented toward use
 within configuration-management software such as
 [http://www.opscode.com/chef/](Chef).
@@ -137,4 +137,4 @@ License and Authors
 
 * Author:: Kurt Yoder <kyoder@loc.gov>
 
-Licensed under the Public Domain by the Library of Congress.
+See LICENSE file for project license information.
