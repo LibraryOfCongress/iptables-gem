@@ -1,5 +1,5 @@
-===========
 Description
+===========
 
 Iptables-gem is a Ruby API for parsing, generating, and comparing Linux
 iptables rules. It is configured using JSON and oriented toward use
