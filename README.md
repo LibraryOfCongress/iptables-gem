@@ -26,7 +26,7 @@ Ruby Usage
 
 Install this gem and `require iptables`. In the examples below,
 `/path/to/json/` refers to the directory containing JSON policy files.
-See [Generate.md](the firewall generation documentation) for information
+See [Generate.md](Generate.md) for information
 on setting these up. There are also example configuration files in
 `examples/policy/*.json`.
 
@@ -85,7 +85,7 @@ Generating a Firewall
 =====================
 
 An explanation of generating a firewall can be found within
-[Generate.md](the firewall generation documentation). An example set of
+[Generate.md](Generate.md). An example set of
 configuration files to create a basic working firewall can be found in
 `examples/policy/*.json`.
 
